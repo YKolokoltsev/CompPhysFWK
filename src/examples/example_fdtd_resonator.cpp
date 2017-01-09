@@ -2,7 +2,7 @@
  * example_fdtd_laser.cpp
  *
  *  Created on: Nov 6, 2016
- *      Author: morrigan
+ *      Author: Dr. Yevgeniy Kolokoltsev
  */
 
 #include <iostream>
@@ -10,14 +10,10 @@
 #include <algorithm>
 #include <list>
 #include <memory>
-#include <functional>
-#include <random>
 
-#include "example_fdtd_2dite.hpp"
-
-#include "lib_fdtd/lib_fdtd.h"
-#include "lib_visual/lib_visual.h"
-#include "lib_fdtd/diplay/em_field_intensity_display.hpp"
+#include "../lib_fdtd/advanced/example_fdtd_2dite.hpp"
+#include "../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
+#include "../lib_fdtd/diplay/em_field_intensity_display.hpp"
 
 using namespace std;
 
@@ -71,8 +67,6 @@ private:
 	shared_ptr<ExpSinPulseSource<EmptyIndex>> src;
 	double w;
 };
-
-#include "example_fdtd_2nd_mur.hpp"
 
 class ExLaserfdtd : public Ex2DITEfdtd {
 public:

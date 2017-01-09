@@ -11,7 +11,7 @@
 #include <map>
 #include <utility>
 
-#include "lib_fdtd/lib_fdtd.h"
+#include "../lib_fdtd.h"
 #include "example_fdtd_2dite.hpp"
 
 using namespace std;

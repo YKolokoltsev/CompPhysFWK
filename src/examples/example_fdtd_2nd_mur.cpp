@@ -2,17 +2,11 @@
  * example_fdtd_2nd_mur.cpp
  *
  *  Created on: Nov 5, 2016
- *      Author: morrigan
+ *      Author: Dr. Yevgeniy Kolokoltsev
  */
 
-#include "example_fdtd_2nd_mur.hpp"
-
-#include <iostream>
-#include <memory>
-
-#include "lib_visual/lib_visual.h"
-#include "lib_fdtd/diplay/em_field_intensity_display.hpp"
-
+#include "../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
+#include "../lib_fdtd/diplay/em_field_intensity_display.hpp"
 
 using namespace std;
 

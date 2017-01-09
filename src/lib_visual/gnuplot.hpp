@@ -26,6 +26,16 @@ public:
 
 	Plotter(string terminal) : terminal(terminal){};
 
+	void append(const vector<double>& data_y, string with){
+		size_t len = data_y.size();
+		Plot plot{{},with}; plot.data.resize(len);
+
+		for(size_t i = 0; i < len; i++)
+			plot.data[i] = make_pair(i, data_y[i]);
+
+		plots.push_back(move(plot));
+	}
+
 	void append(const vector<pair<double, double>>& data, string with){
 			plots.push_back(Plot{data,with});
 		}

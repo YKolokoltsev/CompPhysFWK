@@ -2,21 +2,16 @@
  * example_fdtd_2dte_lence.cpp
  *
  *  Created on: Nov 2, 2016
- *      Author: morrigan
+ *      Author: Dr. Yevgeniy Kolokoltsev
  */
 
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-#include <vector>
 #include <memory>
 
-#include "example_fdtd_2nd_mur.hpp"
-
-#include "lib_fdtd/lib_fdtd.h"
-#include "lib_visual/lib_visual.h"
-#include "lib_fdtd/diplay/em_field_intensity_display.hpp"
-#include "lib_fdtd/diplay/log_energy_density_display.hpp"
+#include "../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
+#include "../lib_fdtd/diplay/em_field_intensity_display.hpp"
 
 using namespace std;
 
@@ -35,14 +30,10 @@ public:
 		sources.clear();
 		sources.resize(Ny);
 
-		int Cy1 = Ny/2.0 + Ny/8.0;
-		int Cy2 = Ny/2.0 - Ny/8.0;
-
 		for(int j = 0; j < Ny; j++){
 			for(int i = 0; i < Nx; i++){
-				if(i >= Nx/5 && i <= (Nx/5+1)){
-					if(!((j >= Cy1-2 && j <= Cy1+2) || (j >= Cy2-2 && j <= Cy2+2)) && (j >= 3 && j <=Ny-3))
-					field[i][j].c.eps = 100;
+				if(opcs::is_pt_in_lp_lens(200,Ny/2,250,230,200,i,j)){
+					field[i][j].c.eps = 3.7;
 				}
 			}
 			double mag = GaussianMag(lda,0, 2*dl, j*dl, 2*dl, dl*Ny/2, lda);
@@ -59,10 +50,10 @@ private:
 
 int main(){
 
-	shared_ptr<ExDifInt> field(new ExDifInt(ExDifInt::tInit{400,200}));
+	shared_ptr<ExDifInt> field(new ExDifInt(ExDifInt::tInit{600,200}));
 
-	Window w(unique_ptr<LogEnergyDensityDisplay<ExDifInt>>(new LogEnergyDensityDisplay<ExDifInt>(field)));
-	w.create_window(600,300);
+	Window w(unique_ptr<EMFieldIntensityDisplay<ExDifInt>>(new EMFieldIntensityDisplay<ExDifInt>(field)));
+	w.create_window(600,200);
 
 	while(1){
 		if(!w.is_running()) break;

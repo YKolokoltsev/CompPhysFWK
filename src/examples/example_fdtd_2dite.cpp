@@ -2,20 +2,16 @@
  * example_fdtd_laser.cpp
  *
  *  Created on: Nov 6, 2016
- *      Author: morrigan
+ *      Author: Dr. Yevgeniy Kolokoltsev
  */
 
 #include <vector>
 #include <memory>
 
-#include "example_fdtd_2dite.hpp"
-#include "lib_visual/lib_visual.h"
-#include "lib_fdtd/diplay/em_field_intensity_display.hpp"
-
+#include "../lib_fdtd/advanced/example_fdtd_2dite.hpp"
+#include "../lib_fdtd/diplay/em_field_intensity_display.hpp"
 
 using namespace std;
-
-
 
 int main(){
 	shared_ptr<Ex2DITEfdtd> field(new Ex2DITEfdtd(Ex2DITEfdtd::tInit{400,300}));

@@ -2,18 +2,19 @@
  * example_te2d.hpp
  *
  *  Created on: Oct 31, 2016
- *      Author: morrigan
+ *      Author: Dr. Yevgeniy Kolokoltsev
  */
 
 #include <iostream>
 
-#include "lib_fdtd/lib_fdtd.h"
-#include "lib_visual/lib_visual.h"
+#include "../lib_fdtd/lib_fdtd.h"
+#include "../lib_visual/lib_visual.h"
 
 class ExMin2Dfdtd : public EMLeapfrogMultiproc<Field2D, Cell2DTE<Plain2DIndex>>{
 public:
 	using tBase = EMLeapfrogMultiproc<Field2D, Cell2DTE<Plain2DIndex>>;
 	using tCell = tBase::tCell;
+	using tFPtr = tBase::tFPtr;
 
 	ExMin2Dfdtd(tBase::tInit ti) : tBase(ti),
 		Nx(field.getNx()), Ny(field.getNy()){

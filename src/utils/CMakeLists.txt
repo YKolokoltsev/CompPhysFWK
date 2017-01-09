@@ -1,1 +1,1 @@
-add_library (utils STATIC "faddeeva.cpp")
+add_library (utils STATIC "faddeeva.cpp" gnuplot_iostream.hpp)

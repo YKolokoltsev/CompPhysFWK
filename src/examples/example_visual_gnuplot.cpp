@@ -2,16 +2,16 @@
  * example_visual_gnuplot.cpp
  *
  *  Created on: Nov 5, 2016
- *      Author: morrigan
+ *      Author: Gnuplot C++ interface group
  */
 
 #include <iostream>
-#include "lib_visual/gnuplot_i.hpp"
+#include "../lib_visual/gnuplot_i.hpp"
 
 #define SLEEP_LGTH 2  // sleep time in seconds
 #define NPOINTS    50 // length of array
 
-void wait_for_key(); // Programm halts until keypress
+void wait_for_key(); // Program halts until keypress
 
 using std::cout;
 using std::endl;

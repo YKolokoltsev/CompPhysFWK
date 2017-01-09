@@ -2,14 +2,14 @@
  * example_fdtd_2dite.hpp
  *
  *  Created on: Nov 6, 2016
- *      Author: morrigan
+ *      Author: Dr. Yevgeniy Kolokoltsev
  */
 
 #ifndef SRC_EXAMPLE_FDTD_2DITE_HPP_
 #define SRC_EXAMPLE_FDTD_2DITE_HPP_
 
-#include "lib_fdtd/lib_fdtd.h"
-#include "lib_visual/lib_visual.h"
+#include "../lib_fdtd.h"
+#include "../../lib_visual/lib_visual.h"
 
 using namespace std;
 
