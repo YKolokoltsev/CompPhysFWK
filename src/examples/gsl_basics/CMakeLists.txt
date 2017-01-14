@@ -9,3 +9,11 @@ target_link_libraries(differentiation ${Boost_LIBRARIES} ${Boost_FILESYSTEM_LIBR
 target_link_libraries(differentiation ${GSL_LIBRARIES})
 target_link_libraries(differentiation ${GNUPLOT_IOS_GSL_LIBRARIES})
 set_property(TARGET differentiation PROPERTY CXX_STANDARD 11)
+
+add_executable (integration "integration.cpp")
+target_include_directories(integration PUBLIC ${GNUPLOT_IOS_INCLUDE_DIR})
+target_include_directories(integration PUBLIC ${GSL_INCLUDE_DIR})
+target_link_libraries(integration ${Boost_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+target_link_libraries(integration ${GSL_LIBRARIES})
+target_link_libraries(integration ${GNUPLOT_IOS_GSL_LIBRARIES})
+set_property(TARGET integration PROPERTY CXX_STANDARD 11)
