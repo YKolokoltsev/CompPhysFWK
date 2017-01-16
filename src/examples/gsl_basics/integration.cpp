@@ -22,6 +22,20 @@ const double x0=0, x1 = 2*M_PI, dx=(x1-x0)/(double)N;
 
 double f(double x, void* params = nullptr){return sin(x);}
 
+ns_timer<double> stl_accumulate(){
+    ns_timer<double> timer;
+    vector<double> y(N);
+
+    auto it_y = y.begin();
+    for(double cx = x0; cx < x1; cx += dx){ *it_y = f(cx); it_y++;}
+
+    timer.start();
+    timer.res = accumulate(y.begin(), y.end(), 0.0);
+    timer.stop();
+
+    return timer;
+}
+
 ns_timer<double> c_style_sum(){
     ns_timer<double> timer;
     double total = 0;
@@ -49,20 +63,6 @@ ns_timer<double> analytic_step_total(){
     return timer;
 }
 
-ns_timer<double> stl_accumulate(){
-    ns_timer<double> timer;
-    vector<double> y(N);
-
-    auto it_y = y.begin();
-    for(double cx = x0; cx < x1; cx += dx){ *it_y = f(cx); it_y++;}
-
-    timer.start();
-    timer.res = accumulate(y.begin(), y.end(), 0.0);
-    timer.stop();
-
-
-    return timer;
-}
 
 ns_timer<double> linear_data_interpolation(){
 
@@ -97,8 +97,9 @@ ns_timer<double> numeric_integration(){
     size_t evals;
 
     timer.start();
-    timer.res = gsl_integration_qng (&F, x0, x1, epsabs, 0, &res, &abserr, &evals);
+    gsl_integration_qng (&F, x0, x1, epsabs, 0, &res, &abserr, &evals);
     timer.stop();
+    timer.res = res;
 
     return timer;
 }
