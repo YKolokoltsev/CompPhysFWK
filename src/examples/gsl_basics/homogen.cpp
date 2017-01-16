@@ -36,19 +36,19 @@ int main(){
             [](gsl_odeiv2_driver* pd){gsl_odeiv2_driver_free(pd);}
     );
 
-    const double dt = 0.01;
-    double t = 2, ti = t, t1 = 6.0;
+    const double dr = 0.01;
+    double r = 2, ri = r, r1 = 6.0;
     vector<double> y{1.0, 0.0};
     t_list_plots plots(1);
 
     do{
-        ti += dt;
-        if(gsl_odeiv2_driver_apply(d.get(), &t, ti, y.data()) != GSL_SUCCESS ){
+        ri += dr;
+        if(gsl_odeiv2_driver_apply(d.get(), &r, ri, y.data()) != GSL_SUCCESS ){
             cerr << "an error occurred" << endl;
             break;
         };
-        plots[0].push_back(make_pair(t, y[0]));
-    }while(ti < t1);
+        plots[0].push_back(make_pair(r, y[0]));
+    }while(ri < r1);
 
     show(plots);
 
