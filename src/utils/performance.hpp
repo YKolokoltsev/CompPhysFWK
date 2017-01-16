@@ -14,7 +14,7 @@
 using namespace std;
 using namespace std::chrono;
 
-template<typename T, typename UTS = nanoseconds>
+template<typename T, typename UTS = microseconds>
 class ns_timer{
     using t_clock = steady_clock;
 
