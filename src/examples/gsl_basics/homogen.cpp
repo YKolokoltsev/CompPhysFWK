@@ -112,7 +112,7 @@ int main(){
 
     //make two evaluations: forward and backward
     //t_solution constructor interpolate data automatically
-    t_solution Y1(evaluate_cauchy<eval_way::fwd>({1, 0}, d));
+    t_solution Y1(evaluate_cauchy<eval_way::fwd>({0, 1}, d));
     t_solution Y2(evaluate_cauchy<eval_way::bwd>({0, -1}, d));
 
     //show results
