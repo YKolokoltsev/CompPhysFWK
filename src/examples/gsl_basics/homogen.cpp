@@ -9,16 +9,49 @@
 
 #include <gsl/gsl_odeiv2.h>
 #include <gsl/gsl_errno.h>
+#include <gsl/gsl_interp.h>
+#include <gsl/gsl_statistics_double.h>
 
 #include "../../utils/gnuplot_iostream.hpp"
 
 using namespace std;
 
+const int N = 1000;
+const double r0 = 0.1, r1 = 6.0, dr = (r1-r0)/N;
+
+using t_triple = tuple<vector<double>,vector<double>,vector<double>>; //x, y, y'
+enum class way{fwd,bwd};
+
+struct t_solution{
+    t_solution(t_triple&& s):
+            itp_y(get<0>(s),get<1>(s)),
+            itp_dy(get<0>(s),get<2>(s)),
+            X(move(get<0>(s))), Y(move(get<1>(s))), DY(move(get<2>(s))) {
+        N = X.size();
+    };
+
+    struct interp{
+        interp(const vector<double>& x, const vector<double>& y):
+                ctx(gsl_interp_alloc(gsl_interp_linear,x.size()), [](gsl_interp* p_ctx) {gsl_interp_free(p_ctx);})
+        {
+            gsl_interp_init(ctx.get(), x.data(), y.data(), x.size());
+            acc = shared_ptr<gsl_interp_accel>(gsl_interp_accel_alloc(), [](gsl_interp_accel* pa){ gsl_interp_accel_free(pa);});
+        };
+
+        shared_ptr<gsl_interp> ctx;
+        shared_ptr<gsl_interp_accel> acc;
+    };
+
+    interp itp_y, itp_dy;
+    vector<double> X,Y,DY;
+    size_t N;
+};
+
+//first order regular differential equation system
 int f(double r, const double y[], double dydr[], void *params = nullptr){
     if(r < 0) return GSL_EFAULT;
     //y[0] = psi; y[1] = d psi/dr;
-    //dydr[0] = d psi /dr; dydr[1] = d2 psi /dt2
-    const double l = 3;
+    const double l = 1;
     dydr[0] = y[1];
     if(abs(pow(r,2.0) - y[0]) < 1e-3){
         dydr[1] = l*(l+1);
@@ -28,29 +61,74 @@ int f(double r, const double y[], double dydr[], void *params = nullptr){
     return GSL_SUCCESS;
 }
 
+//two way Cuachy evaluation with normalization
+template<way w>
+t_triple evaluate_cauchy(vector<double> y, shared_ptr<gsl_odeiv2_driver> &d){
+
+    constexpr struct it_i{int i0; int i1; double di;} ci = w == way::fwd ? it_i{0,N+1,1} : it_i{N,-1,-1};
+    constexpr struct it_r{double r0; double dr;} cr = w == way::fwd ? it_r{r0,dr} : it_r{r1,-dr};
+
+    vector<double> X(N+1), Y(N+1), DY(N+1);
+    double norm = 0;
+
+    int i = ci.i0;
+    double r = cr.r0;
+    gsl_odeiv2_driver_reset_hstart(d.get(),ci.di*1e-6);
+
+    do{
+        X[i] = r; Y[i] = y[0]; DY[i] = y[1];
+        norm += y[0]*y[0];
+        gsl_odeiv2_driver_apply(d.get(), &r, r+cr.dr, y.data());
+        i += ci.di;
+    }while(i != ci.i1);
+
+    norm = sqrt(norm);
+    i = ci.i0;
+    do{
+        Y[i] /= norm; DY[i] /= norm;
+        i += ci.di;
+    }while(i != ci.i1);
+
+    return t_triple{X,Y,DY};
+}
+
+double wronskian(double x, const t_solution& Y1, const t_solution& Y2){
+
+    double y1  = gsl_interp_eval (Y1.itp_y.ctx.get(), Y1.X.data(), Y1.Y.data(), x, Y1.itp_y.acc.get());
+    double dy1 = gsl_interp_eval (Y1.itp_y.ctx.get(), Y1.X.data(), Y1.DY.data(), x, Y1.itp_dy.acc.get());
+    double y2  = gsl_interp_eval (Y2.itp_y.ctx.get(), Y2.X.data(), Y2.Y.data(), x, Y2.itp_y.acc.get());
+    double dy2 = gsl_interp_eval (Y2.itp_y.ctx.get(), Y2.X.data(), Y2.DY.data(), x, Y2.itp_dy.acc.get());
+
+    return y1*dy2 - y2*dy1;
+}
+
 int main(){
 
+    //initialize differential equations solver
     gsl_odeiv2_system sys = {f, nullptr, 2, nullptr};
     shared_ptr<gsl_odeiv2_driver> d(
             gsl_odeiv2_driver_alloc_y_new(&sys, gsl_odeiv2_step_rkf45, 1e-6,1e-6,0.0),
             [](gsl_odeiv2_driver* pd){gsl_odeiv2_driver_free(pd);}
     );
 
-    const double dr = 0.01;
-    double r = 2, ri = r, r1 = 6.0;
-    vector<double> y{1.0, 0.0};
-    t_list_plots plots(1);
+    //make two evaluations: forward and backward
+    //make interpolations afterwards
+    t_solution Y1(evaluate_cauchy<way::fwd>({1, 0}, d));
+    t_solution Y2(evaluate_cauchy<way::bwd>({0, -1}, d));
 
-    do{
-        ri += dr;
-        if(gsl_odeiv2_driver_apply(d.get(), &r, ri, y.data()) != GSL_SUCCESS ){
-            cerr << "an error occurred" << endl;
-            break;
-        };
-        plots[0].push_back(make_pair(r, y[0]));
-    }while(ri < r1);
-
+    //show results
+    t_list_plots plots(2);
+    for(int i = 0; i < Y1.N; i++)plots[0].push_back(make_pair(Y1.X[i],Y1.Y[i]));
+    for(int i = 0; i < Y2.N; i++)plots[1].push_back(make_pair(Y2.X[i],Y2.Y[i]));
     show(plots);
+
+    vector<double> wskns(Y1.N-1);
+    for(int i = 1; i < Y1.N; i++) wskns[i-1] = wronskian(Y1.X[i],Y1,Y2);
+    cout << endl << "Wronskian statistics:" << endl;
+    cout << "mean = " <<  gsl_stats_mean(wskns.data(), 1, wskns.size()) << endl;
+    cout << "variance = " <<  gsl_stats_variance(wskns.data(), 1, wskns.size()) << endl;
+    cout << "max = " <<  gsl_stats_max(wskns.data(), 1, wskns.size()) << endl;
+    cout << "min = " <<  gsl_stats_min(wskns.data(), 1, wskns.size()) << endl;
 
     return 0;
 }
