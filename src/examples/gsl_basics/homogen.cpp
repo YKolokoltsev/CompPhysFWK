@@ -20,21 +20,20 @@ const int N = 1000;
 const double r0 = 0.1, r1 = 6.0, dr = (r1-r0)/N;
 
 using t_triple = tuple<vector<double>,vector<double>,vector<double>>; //x, y, y'
-enum class way{fwd,bwd};
+enum class eval_way{fwd,bwd};
 
 struct t_solution{
-    t_solution(t_triple&& s):
-            itp_y(get<0>(s),get<1>(s)),
-            itp_dy(get<0>(s),get<2>(s)),
-            X(move(get<0>(s))), Y(move(get<1>(s))), DY(move(get<2>(s))) {
+    t_solution(t_triple&& s): X(move(get<0>(s))), Y(move(get<1>(s))), DY(move(get<2>(s))) {
         N = X.size();
+        itp_y.init(X,Y,N);
+        itp_dy.init(X,DY,N);
     };
 
-    struct interp{
-        interp(const vector<double>& x, const vector<double>& y):
-                ctx(gsl_interp_alloc(gsl_interp_linear,x.size()), [](gsl_interp* p_ctx) {gsl_interp_free(p_ctx);})
+    struct t_interp{
+        void init(const vector<double>& x, const vector<double>& y, const size_t N)
         {
-            gsl_interp_init(ctx.get(), x.data(), y.data(), x.size());
+            ctx = shared_ptr<gsl_interp>(gsl_interp_alloc(gsl_interp_linear,N), [](gsl_interp* p_ctx) {gsl_interp_free(p_ctx);});
+            gsl_interp_init(ctx.get(), x.data(), y.data(), N);
             acc = shared_ptr<gsl_interp_accel>(gsl_interp_accel_alloc(), [](gsl_interp_accel* pa){ gsl_interp_accel_free(pa);});
         };
 
@@ -42,7 +41,7 @@ struct t_solution{
         shared_ptr<gsl_interp_accel> acc;
     };
 
-    interp itp_y, itp_dy;
+    t_interp itp_y, itp_dy;
     vector<double> X,Y,DY;
     size_t N;
 };
@@ -62,11 +61,11 @@ int f(double r, const double y[], double dydr[], void *params = nullptr){
 }
 
 //two way Cuachy evaluation with normalization
-template<way w>
-t_triple evaluate_cauchy(vector<double> y, shared_ptr<gsl_odeiv2_driver> &d){
+template<eval_way w>
+inline t_triple evaluate_cauchy(vector<double> y, shared_ptr<gsl_odeiv2_driver> &d){
 
-    constexpr struct it_i{int i0; int i1; double di;} ci = w == way::fwd ? it_i{0,N+1,1} : it_i{N,-1,-1};
-    constexpr struct it_r{double r0; double dr;} cr = w == way::fwd ? it_r{r0,dr} : it_r{r1,-dr};
+    constexpr struct it_i{int i0; int i1; double di;} ci = w == eval_way::fwd ? it_i{0,N+1,1} : it_i{N,-1,-1};
+    constexpr struct it_r{double r0; double dr;} cr = w == eval_way::fwd ? it_r{r0,dr} : it_r{r1,-dr};
 
     vector<double> X(N+1), Y(N+1), DY(N+1);
     double norm = 0;
@@ -112,9 +111,9 @@ int main(){
     );
 
     //make two evaluations: forward and backward
-    //make interpolations afterwards
-    t_solution Y1(evaluate_cauchy<way::fwd>({1, 0}, d));
-    t_solution Y2(evaluate_cauchy<way::bwd>({0, -1}, d));
+    //t_solution constructor interpolate data automatically
+    t_solution Y1(evaluate_cauchy<eval_way::fwd>({1, 0}, d));
+    t_solution Y2(evaluate_cauchy<eval_way::bwd>({0, -1}, d));
 
     //show results
     t_list_plots plots(2);
@@ -122,13 +121,13 @@ int main(){
     for(int i = 0; i < Y2.N; i++)plots[1].push_back(make_pair(Y2.X[i],Y2.Y[i]));
     show(plots);
 
-    vector<double> wskns(Y1.N-2);
-    for(int i = 1; i < Y1.N-1; i++) wskns[i-1] = wronskian(Y1.X[i],Y1,Y2);
+    vector<double> wskn_ensemble(Y1.N-2);
+    for(int i = 1; i < Y1.N-1; i++) wskn_ensemble[i-1] = wronskian(Y1.X[i],Y1,Y2);
     cout << endl << "Wronskian statistics:" << endl;
-    cout << "mean = " <<  gsl_stats_mean(wskns.data(), 1, wskns.size()) << endl;
-    cout << "variance = " <<  gsl_stats_variance(wskns.data(), 1, wskns.size()) << endl;
-    cout << "max = " <<  gsl_stats_max(wskns.data(), 1, wskns.size()) << endl;
-    cout << "min = " <<  gsl_stats_min(wskns.data(), 1, wskns.size()) << endl;
+    cout << "mean = "     <<  gsl_stats_mean(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
+    cout << "variance = " <<  gsl_stats_variance(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
+    cout << "max = "      <<  gsl_stats_max(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
+    cout << "min = "      <<  gsl_stats_min(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
 
     return 0;
 }
