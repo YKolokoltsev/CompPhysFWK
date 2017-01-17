@@ -122,8 +122,8 @@ int main(){
     for(int i = 0; i < Y2.N; i++)plots[1].push_back(make_pair(Y2.X[i],Y2.Y[i]));
     show(plots);
 
-    vector<double> wskns(Y1.N-1);
-    for(int i = 1; i < Y1.N; i++) wskns[i-1] = wronskian(Y1.X[i],Y1,Y2);
+    vector<double> wskns(Y1.N-2);
+    for(int i = 1; i < Y1.N-1; i++) wskns[i-1] = wronskian(Y1.X[i],Y1,Y2);
     cout << endl << "Wronskian statistics:" << endl;
     cout << "mean = " <<  gsl_stats_mean(wskns.data(), 1, wskns.size()) << endl;
     cout << "variance = " <<  gsl_stats_variance(wskns.data(), 1, wskns.size()) << endl;
