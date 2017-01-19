@@ -11,13 +11,14 @@
 #include <gsl/gsl_errno.h>
 #include <gsl/gsl_interp.h>
 #include <gsl/gsl_statistics_double.h>
+#include <gsl/gsl_integration.h>
 
-#include "../../utils/gnuplot_iostream.hpp"
+#include "gnuplot-iostream.h"
 
 using namespace std;
 
 const int N = 1000;
-const double r0 = 0.1, r1 = 6.0, dr = (r1-r0)/N;
+const double r0 = 0.1, r1 = 8.0, dr = (r1-r0)/N;
 
 using t_triple = tuple<vector<double>,vector<double>,vector<double>>; //x, y, y'
 enum class eval_way{fwd,bwd};
@@ -41,6 +42,9 @@ struct t_solution{
         shared_ptr<gsl_interp_accel> acc;
     };
 
+    inline double y(double x){return gsl_interp_eval (itp_y.ctx.get(), X.data(), Y.data(), x, itp_y.acc.get());}
+    inline double dy(double x){return gsl_interp_eval (itp_dy.ctx.get(), X.data(), DY.data(), x, itp_dy.acc.get());}
+
     t_interp itp_y, itp_dy;
     vector<double> X,Y,DY;
     size_t N;
@@ -52,11 +56,7 @@ int f(double r, const double y[], double dydr[], void *params = nullptr){
     //y[0] = psi; y[1] = d psi/dr;
     const double l = 1;
     dydr[0] = y[1];
-    if(abs(pow(r,2.0) - y[0]) < 1e-3){
-        dydr[1] = l*(l+1);
-    }else{
-        dydr[1] = y[0]*l*(l+1)/pow(r,2.0);
-    }
+    dydr[1] = y[0]*l*(l+1)/pow(r,2.0);
     return GSL_SUCCESS;
 }
 
@@ -88,17 +88,49 @@ inline t_triple evaluate_cauchy(vector<double> y, shared_ptr<gsl_odeiv2_driver> 
         i += ci.di;
     }while(i != ci.i1);
 
+    X[0] = r0; X[N] = r1;
+
     return t_triple{X,Y,DY};
 }
 
-double wronskian(double x, const t_solution& Y1, const t_solution& Y2){
+double wronskian(t_solution& Y1, t_solution& Y2){
+    vector<double> wskn_ensemble(Y1.N);
+    for(int i = 0; i < Y1.N; i++){
+        double x = Y1.X[i];
+        wskn_ensemble[i] = Y2.y(x)*Y1.dy(x) - Y1.y(x)*Y2.dy(x);
+    }
+    double w = gsl_stats_mean(wskn_ensemble.data(), 1, wskn_ensemble.size());
+    double var = gsl_stats_variance(wskn_ensemble.data(), 1, wskn_ensemble.size());
 
-    double y1  = gsl_interp_eval (Y1.itp_y.ctx.get(), Y1.X.data(), Y1.Y.data(), x, Y1.itp_y.acc.get());
-    double dy1 = gsl_interp_eval (Y1.itp_y.ctx.get(), Y1.X.data(), Y1.DY.data(), x, Y1.itp_dy.acc.get());
-    double y2  = gsl_interp_eval (Y2.itp_y.ctx.get(), Y2.X.data(), Y2.Y.data(), x, Y2.itp_y.acc.get());
-    double dy2 = gsl_interp_eval (Y2.itp_y.ctx.get(), Y2.X.data(), Y2.DY.data(), x, Y2.itp_dy.acc.get());
+    cout << "Wronskian is " << w << " and has an error of " << abs(100.0*var/w) << " %" << endl;
 
-    return y1*dy2 - y2*dy1;
+    return w;
+}
+
+double green_function(double x, double s, t_solution& Y1, t_solution& Y2, double Vo = 1){
+    if(x < s) return Y1.y(x)*Y2.y(s)/Vo;
+    return Y2.y(x)*Y1.y(s)/Vo;
+}
+
+using t_kernel_params = tuple<double /*x*/, t_solution&/*Y1*/, t_solution&/*Y2*/, double/*Vo*/>;
+
+double kernel(double r, void* params = nullptr){
+    t_kernel_params* p = (t_kernel_params*) params;
+    return green_function(get<0>(*p)/*x*/, r, get<1>(*p)/*Y1*/,
+                          get<2>(*p)/*Y2*/, get<3>(*p)/*Vo*/)*exp(-r)/(8*M_PI);
+}
+
+double psi(double x, t_solution& Y1, t_solution& Y2, double Vo = 1){
+
+    t_kernel_params params{x, Y1, Y2, Vo};
+
+    gsl_function F{&kernel,&params};
+    double res, abserr;
+    size_t neval;
+
+    gsl_integration_qng (&F, r0, r1, 1e-2, 0, &res, &abserr, &neval);
+    cout << "Integration: x(" << x << "); err(" << (100.0*abserr/res) << "%); neval(" << neval << ");" << endl;
+    return res;
 }
 
 int main(){
@@ -112,22 +144,32 @@ int main(){
 
     //make two evaluations: forward and backward
     //t_solution constructor interpolate data automatically
-    t_solution Y1(evaluate_cauchy<eval_way::fwd>({1, 0}, d));
+    t_solution Y1(evaluate_cauchy<eval_way::fwd>({0, 1}, d));
     t_solution Y2(evaluate_cauchy<eval_way::bwd>({0, -1}, d));
 
-    //show results
-    t_list_plots plots(2);
-    for(int i = 0; i < Y1.N; i++)plots[0].push_back(make_pair(Y1.X[i],Y1.Y[i]));
-    for(int i = 0; i < Y2.N; i++)plots[1].push_back(make_pair(Y2.X[i],Y2.Y[i]));
-    show(plots);
 
-    vector<double> wskn_ensemble(Y1.N-2);
-    for(int i = 1; i < Y1.N-1; i++) wskn_ensemble[i-1] = wronskian(Y1.X[i],Y1,Y2);
-    cout << endl << "Wronskian statistics:" << endl;
-    cout << "mean = "     <<  gsl_stats_mean(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
-    cout << "variance = " <<  gsl_stats_variance(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
-    cout << "max = "      <<  gsl_stats_max(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
-    cout << "min = "      <<  gsl_stats_min(wskn_ensemble.data(), 1, wskn_ensemble.size()) << endl;
+    double Vo = wronskian(Y1, Y2);
+    const size_t SN = 50;
+    Gnuplot gp;
+
+#if 1
+        //Plot  Green's Function
+        gp << " $wgrid << EOD " << endl;
+        for (double x = r0; x <= r1; x += 3 * (r1 - r0) / SN) {
+            for (double s = r0; s <= r1; s += (r1 - r0) / SN)
+                gp << s << " " << x << " " << green_function(x, s, Y1, Y2, Vo) << endl;
+            gp << endl << endl;
+        }
+        gp << "EOD" << endl;
+        gp << "splot '$wgrid' with lines palette notitle" << endl;
+#else
+        //plot ingomogeneous solution
+        gp << " $psi << EOD " << endl;
+        for (double r = r0; r <= r1; r += dr)
+            gp << r << " " << psi(r, Y1, Y2, Vo) << endl;
+        gp << "EOD" << endl;
+        gp << "plot '$psi' with lines t 'psi'" << endl;
+#endif
 
     return 0;
 }
