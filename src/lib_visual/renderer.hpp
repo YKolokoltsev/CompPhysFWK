@@ -22,6 +22,7 @@ public:
 	virtual void render() = 0;
 	virtual void attach() = 0;
 	virtual void detach() = 0;
+	virtual void msg_proc(const ALLEGRO_EVENT& ev){};
 };
 
 class Bitmap2DRenderer : public IRenderer{

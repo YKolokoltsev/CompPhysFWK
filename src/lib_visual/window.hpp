@@ -38,6 +38,12 @@ public:
 		if (!al_init())
 			throw runtime_error("failed to initialize allegro");
 
+		if(!al_install_mouse())
+			throw runtime_error("failed to install mouse");
+
+		if(!al_install_keyboard())
+			throw runtime_error("failed to install keyboard");
+
 		if (!al_init_primitives_addon())
 			throw runtime_error("failed to initialize allegro primitives addon");
 	};
@@ -57,10 +63,6 @@ public:
 
 	bool is_running(){return running;};
 	virtual ~Window(){close();};
-
-
-protected:
-	virtual void msg_proc(const ALLEGRO_EVENT& ev){};
 
 private:
 
@@ -85,17 +87,27 @@ private:
 
 	void start_msg_queue(){
 		al_register_event_source(event_queue.get(), al_get_display_event_source(display.get()));
+		al_register_event_source(event_queue.get(), al_get_mouse_event_source());
+		al_register_event_source(event_queue.get(), al_get_keyboard_event_source());
 		ALLEGRO_EVENT ev;
 
 		while (1) {
 			if(terminate) goto stop;
 			while(al_get_next_event(event_queue.get(), &ev)){
+
+				if(ev.any.source == al_get_mouse_event_source()){
+					if(ev.mouse.display != display.get()) continue;
+				}else if(ev.any.source == al_get_keyboard_event_source()){
+					if(ev.keyboard.display != display.get()) continue;
+				}
+
 				if(ev.type == ALLEGRO_EVENT_DISPLAY_CLOSE) goto stop;
-				msg_proc(ev);
+				renderer->msg_proc(ev);
 			}
 
 			renderer->render();
 			this_thread::sleep_for(chrono::milliseconds(40));
+
 		}
 
 		stop:
