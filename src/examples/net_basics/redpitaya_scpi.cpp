@@ -6,9 +6,10 @@
 #include <memory>
 #include <list>
 #include <thread>
+#include <bitset>
 
 #include <boost/asio.hpp>
-#include <boost/circular_buffer.hpp>
+#include <boost/multiprecision/cpp_bin_float.hpp>
 
 #include "../../utils/performance.hpp"
 #include "../../lib_visual/renderer.hpp"
@@ -19,8 +20,9 @@ const size_t Npts = pow(2,14.0); //num of data points
 using namespace std;
 using namespace boost::asio::ip;
 
-using t_data_ptr = shared_ptr<array<float,Npts>>;
-list<t_data_ptr> adq_io;
+using t_plain_data = vector<char>;
+using t_plain_data_ptr = shared_ptr<t_plain_data>;
+list<t_plain_data_ptr> adq_io;
 bool stop = false;
 
 /*
@@ -32,14 +34,14 @@ void acquisition_proc(){
     string line; //string line for ASCII I/O
     ns_timer<size_t> timer; timer.res = 0; //measure transfer rate
     char c; //byte to read from input stream
-    boost::circular_buffer<char> cb(7); //data pack delimiter
-    t_data_ptr data_ptr(new array<float,Npts>());//complete data line
+    t_plain_data_ptr data_ptr(new t_plain_data());//complete data line
+    vector<char> ch_n_pts;//number of binary points to read
 
     //Connect to server and configure data acquisition
     s_tcp.connect("192.168.100.4","5000");
 
     s_tcp << "ACQ:DEC 1;" << "\r\n";
-    //s_tcp << "ACQ:TRIG:DLY 500;:ACQ:TRIG:LEV 30;" << "\r\n";
+    s_tcp << "ACQ:TRIG:DLY 500;:ACQ:TRIG:LEV 30;" << "\r\n";
     s_tcp << "ACQ:START;" << "\r\n";
     //s_tcp << ":ACQ:TRIG CH2_PE;" << "\r\n";
 
@@ -51,42 +53,47 @@ void acquisition_proc(){
     s_tcp >> line;
     cout << line << endl;
 
-    s_tcp << "ACQ:GET:DATA:UNITS RAW" << "\r\n";
+    //s_tcp << "ACQ:GET:DATA:UNITS RAW" << "\r\n";
     s_tcp << "ACQ:DATA:FORMAT BIN" << "\r\n";
 
-    //queue two data requests to the server, an answer onto the first one
-    //will start the nonstop loop of subsequent requests sent during response transfer
-    s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
-    s_tcp << "ACQ:BUF:SIZE?" << "\r\n"; //request for delimiter line
-    s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
-    s_tcp << "ACQ:BUF:SIZE?" << "\r\n"; //...
+   // s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
 
-    timer.start();
     bool local_stop = false;
-    while(1){
+    do{
+        //start measuring data transfer rate
+        timer.start();
 
-        //read points
-        s_tcp.read(static_cast<char*>((void*)data_ptr->data()),data_ptr->size()*4);
+        //request for single data block
+        s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
 
-        //continue reading until the delimiter
-        do{
-            s_tcp.read(&c,1);
-            cb.push_back(c);
-        }while(!(cb[0] == '1' && cb[1] == '6' && cb[2] == '3' && cb[3] == '8' && cb[4] == '4' && cb[5] == '\r' && cb[6] == '\n'));
+        //read until data start delimiter
+        do{ s_tcp.read(&c,1); } while(c != '#');
+
+        //read number of chars describing data length
+        s_tcp.read(&c,1);
+        auto l = stoi(string(1,c));
+
+        //read and convert to numeric the data length
+        ch_n_pts.clear();
+        ch_n_pts.resize(l+1);
+        s_tcp.read(ch_n_pts.data(),l);
+        ch_n_pts.at(l) = 0;
+        auto dl = stoi(string(ch_n_pts.data()));
+
+        //read points, TODO: BUG on size of vector to read, shell be more generic
+        data_ptr.reset(new t_plain_data());
+        data_ptr->resize(dl);
+        s_tcp.read(static_cast<char*>((void*)data_ptr->data()),dl);
+
+        //(send data to main app) is it thread safe?
+        adq_io.push_back(data_ptr);
 
         timer.stop();
-        adq_io.push_back(data_ptr); //(send data to main app) is it thread safe?
+        timer.res = dl;
+        cout << "BLOCK RECEIVED "<< timer << endl;
+    }while(!stop);
 
-        if(local_stop) break;
-        if(stop) {local_stop = true; continue;} //read data left in queue before break this loop
-
-        data_ptr.reset(new array<float,Npts>());
-        //cout << "BLOCK RECEIVED " << timer << endl;
-        s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
-        s_tcp << "ACQ:BUF:SIZE?" << "\r\n";
-        timer.start();
-    }
-
+    s_tcp.flush();
     cout << "Reset server, close connection" << endl;
     s_tcp << "ACQ:RST" << "\r\n";
     s_tcp.flush();
@@ -127,16 +134,40 @@ protected:
 
         if(!data) return;
 
-        for(int i = 0; i < Nx; i++){
+        for(int i = 0; i < 128; i+=4)
+        {
+
+            float v;
+            memcpy((void*)&v,(void*)&data->data()[i],2);
+
+            cout << bitset<8>(data->data()[i]) << " "
+                 << bitset<8>(data->data()[i+1]) << " "
+                 << bitset<8>(data->data()[i+2]) << " "
+                 << bitset<8>(data->data()[i+3]) << "    " << v;
+
+            int i1 = data->data()[i+1]; i1 = i1 << 8;
+            int i2 = data->data()[i+2];
+            i1 = i1 + i2;
+            cout << "   " << i1 << endl;
+        }
+
+
+        /*for(int i = 0; i < Nx; i++){
             int idx = (i - ts)*scale[t_scale_idx]*10/(dt*Nx);
             float y = 0;
-            if(idx >= 0 && idx < Nx) y = (((double)Ny/((double)8*scale[v_scale_idx]))*data->data()[idx]+(double)Ny/2+cv);
+            if(idx >= 0 && idx < Nx){
+                //y = ntohl(data->data()[idx]);
+                y = data->data()[idx];//*1e-6;
+
+                //cout << idx << " " << bitset<32>(y) << endl;
+                y = (((double)Ny/((double)8*scale[v_scale_idx]))*y+(double)Ny/2+cv);
+            }
 
             v[i].y = y>=0 && y < Ny ? y : 0;
             v[i].color = al_map_rgb(255,0,0); //why?
         }
 
-        al_draw_prim(v.data(), nullptr, nullptr, 0, Nx, ALLEGRO_PRIM_LINE_STRIP);
+        al_draw_prim(v.data(), nullptr, nullptr, 0, Nx, ALLEGRO_PRIM_LINE_STRIP);*/
 
     }
 
@@ -171,7 +202,7 @@ protected:
     size_t Nx = 375; //screen width (10)
     size_t Ny = 300; //screen height (8)
     double dt = 0.008e-6; //125Mhz
-    t_data_ptr data = nullptr;
+    t_plain_data_ptr data = nullptr;
     vector<ALLEGRO_VERTEX> v;
     vector<double> scale; //scale factors
 
@@ -181,6 +212,8 @@ protected:
     char v_scale_idx; //voltage scale [volts]
     char t_scale_idx; //time scale [sec]
 };
+
+using namespace boost::multiprecision;
 
 int main(){
 
