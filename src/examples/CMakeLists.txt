@@ -1,5 +1,6 @@
 add_subdirectory(gsl_basics)
 add_subdirectory(net_basics)
+add_subdirectory(dsp_basics)
 
 find_package(Allegro REQUIRED) #OpenGL
 find_package(Threads REQUIRED) #Multithreading
