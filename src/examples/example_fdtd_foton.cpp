@@ -68,7 +68,7 @@ private:
 
 };
 
-int main(){
+int main(int argc, char **argv){
 	shared_ptr<ExLaserfdtd> field(new ExLaserfdtd(ExLaserfdtd::tInit{300,300}));
 
 	Window w(unique_ptr<EMFieldIntensityDisplay<ExLaserfdtd>>(new EMFieldIntensityDisplay<ExLaserfdtd>(field)));

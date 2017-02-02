@@ -24,17 +24,20 @@ endif(ALLEGRO_INCLUDE_DIR)
 find_path(ALLEGRO_INCLUDE_DIR allegro5/allegro.h)
 
 set (ALLEGRO_NAME allegro)
+set (ALLEGRO_MAIN_NAME allegro_main)
 set (ALLEGRO_IMAGE_NAME allegro_image)
 set (ALLEGRO_FONT_NAME allegro_font)
 set (ALLEGRO_TTF_NAME allegro_ttf)
 set (ALLEGRO_PRIMITIVES_NAME allegro_primitives)
 append_lib_type_suffix(ALLEGRO_NAME)
+append_lib_type_suffix(ALLEGRO_MAIN_NAME)
 append_lib_type_suffix(ALLEGRO_IMAGE_NAME)
 append_lib_type_suffix(ALLEGRO_FONT_NAME)
 append_lib_type_suffix(ALLEGRO_TTF_NAME)
 append_lib_type_suffix(ALLEGRO_PRIMITIVES_NAME)
 
 find_library(ALLEGRO_LIBRARY NAMES ${ALLEGRO_NAME} allegro)
+find_library(ALLEGRO_MAIN_LIBRARY NAMES ${ALLEGRO_MAIN_NAME} allegro_main)
 find_library(ALLEGRO_IMAGE_LIBRARY NAMES ${ALLEGRO_IMAGE_NAME} allegro_image)
 find_library(ALLEGRO_FONT_LIBRARY NAMES ${ALLEGRO_FONT_NAME} allegro_font)
 find_library(ALLEGRO_TTF_LIBRARY NAMES ${ALLEGRO_TTF_NAME} allegro_ttf)
@@ -46,6 +49,7 @@ include(FindPackageHandleStandardArgs)
 find_package_handle_standard_args(ALLEGRO DEFAULT_MSG
     ALLEGRO_INCLUDE_DIR
     ALLEGRO_LIBRARY
+    ALLEGRO_MAIN_LIBRARY
     ALLEGRO_IMAGE_LIBRARY
     ALLEGRO_FONT_LIBRARY
     ALLEGRO_TTF_LIBRARY
@@ -54,6 +58,7 @@ find_package_handle_standard_args(ALLEGRO DEFAULT_MSG
 if(ALLEGRO_FOUND)
     list(APPEND ALLEGRO_LIBRARIES
         ${ALLEGRO_LIBRARY}
+        ${ALLEGRO_MAIN_LIBRARY}
         ${ALLEGRO_IMAGE_LIBRARY}
         ${ALLEGRO_FONT_LIBRARY}
         ${ALLEGRO_TTF_LIBRARY}
@@ -66,6 +71,7 @@ endif(ALLEGRO_FOUND)
 mark_as_advanced(
     ALLEGRO_INCLUDE_DIR
     ALLEGRO_LIBRARY
+    ALLEGRO_MAIN_LIBRARY
     ALLEGRO_IMAGE_LIBRARY
     ALLEGRO_FONT_LIBRARY
     ALLEGRO_TTF_LIBRARY
