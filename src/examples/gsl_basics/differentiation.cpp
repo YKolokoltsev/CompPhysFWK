@@ -11,7 +11,7 @@
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_deriv.h>
 
-#include "../../utils/gnuplot_iostream.hpp"
+#include "../../lib_visual/gnuplot_iostream.hpp"
 
 using namespace std;
 
@@ -52,6 +52,26 @@ double d5_gsl_c(double x, double h){
     gsl_deriv_central(&F, x, h, &res, &err);
     return res;
 }
+
+
+using plot = vector<tuple<double,double>>;
+using t_list_plots = vector<plot>;
+
+void show(t_list_plots data){
+    Gnuplot gp;
+    bool is_first = true;
+    for(auto line : data){
+        if(is_first){ gp << "plot ";} else{gp << ", "; };
+        is_first = false;
+        gp << " '-' with lines";
+    }
+    gp << ";" << endl;
+
+    for(auto line : data){
+        gp.send1d(line);
+    }
+}
+
 
 int main(){
 

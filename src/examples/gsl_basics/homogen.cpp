@@ -13,7 +13,7 @@
 #include <gsl/gsl_statistics_double.h>
 #include <gsl/gsl_integration.h>
 
-#include "gnuplot-iostream.h"
+#include "../../lib_visual/gnuplot_iostream.hpp"
 
 using namespace std;
 

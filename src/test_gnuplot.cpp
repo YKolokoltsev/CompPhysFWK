@@ -3,7 +3,7 @@
 #include <vector>
 #include <tuple>
 
-#include "gnuplot-iostream.h"
+#include "lib_visual/gnuplot_iostream.hpp"
 
 using namespace std;
 
