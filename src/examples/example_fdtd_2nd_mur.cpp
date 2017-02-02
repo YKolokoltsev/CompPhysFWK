@@ -10,7 +10,7 @@
 
 using namespace std;
 
-int main(){
+int main(int argc, char **argv){
 
 	shared_ptr<ExFDTD2ndTEMur> field(new ExFDTD2ndTEMur(ExFDTD2ndTEMur::tInit{300,300}));
 

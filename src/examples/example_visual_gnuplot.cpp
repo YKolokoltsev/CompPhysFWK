@@ -16,7 +16,7 @@ void wait_for_key(); // Program halts until keypress
 using std::cout;
 using std::endl;
 
-int main()
+int main(int argc, char **argv)
 {
     cout << "*** example of gnuplot control through C++ ***" << endl << endl;
 

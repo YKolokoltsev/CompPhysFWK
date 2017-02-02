@@ -13,7 +13,7 @@
 
 using namespace std;
 
-int main(){
+int main(int argc, char **argv){
 	shared_ptr<Ex2DITEfdtd> field(new Ex2DITEfdtd(Ex2DITEfdtd::tInit{400,300}));
 
 	Window w(unique_ptr<EMFieldIntensityDisplay<Ex2DITEfdtd>>(new EMFieldIntensityDisplay<Ex2DITEfdtd>(field)));

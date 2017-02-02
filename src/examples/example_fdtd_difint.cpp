@@ -52,7 +52,7 @@ private:
 	vector<shared_ptr<tSourceBase>> &sources = tBase::sources;
 };
 
-int main(){
+int main(int argc, char **argv){
 
 	shared_ptr<ExDifInt> field(new ExDifInt(ExDifInt::tInit{400,200}));
 

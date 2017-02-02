@@ -108,7 +108,7 @@ private:
 	const double w = 2*M_PI*Vg/(lda_c);
 };
 
-int main(){
+int main(int argc, char **argv){
 	shared_ptr<ExLaserfdtd> field(new ExLaserfdtd(ExLaserfdtd::tInit{200,200}));
 
 	Window w(unique_ptr<EMFieldIntensityDisplay<ExLaserfdtd>>(new EMFieldIntensityDisplay<ExLaserfdtd>(field)));
