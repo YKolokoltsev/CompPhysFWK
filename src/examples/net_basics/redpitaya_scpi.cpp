@@ -6,7 +6,6 @@
 #include <memory>
 #include <list>
 #include <thread>
-#include <bitset>
 
 #include <boost/asio.hpp>
 #include <boost/multiprecision/cpp_bin_float.hpp>
@@ -14,6 +13,7 @@
 #include "../../utils/performance.hpp"
 #include "../../lib_visual/renderer.hpp"
 #include "../../lib_visual/window.hpp"
+#include "../../utils/ieee754_1985.hpp"
 
 const size_t Npts = pow(2,14.0); //num of data points
 
@@ -37,61 +37,65 @@ void acquisition_proc(){
     t_plain_data_ptr data_ptr(new t_plain_data());//complete data line
     vector<char> ch_n_pts;//number of binary points to read
 
+    //TODO: Detect IP by a known MAC
     //Connect to server and configure data acquisition
     s_tcp.connect("192.168.100.4","5000");
 
+    //configure acquisition mode
     s_tcp << "ACQ:DEC 1;" << "\r\n";
-    s_tcp << "ACQ:TRIG:DLY 500;:ACQ:TRIG:LEV 30;" << "\r\n";
-    s_tcp << "ACQ:START;" << "\r\n";
-    //s_tcp << ":ACQ:TRIG CH2_PE;" << "\r\n";
-
-    s_tcp << "ACQ:TRIG:STAT?" << "\r\n";
-    s_tcp >> line;
-    cout << line << endl;
-
-    s_tcp << "ACQ:TRIG:STAT?" << "\r\n";
-    s_tcp >> line;
-    cout << line << endl;
-
-    //s_tcp << "ACQ:GET:DATA:UNITS RAW" << "\r\n";
     s_tcp << "ACQ:DATA:FORMAT BIN" << "\r\n";
 
-   // s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
 
-    bool local_stop = false;
-    do{
+    int requests_pending = 0;
+    while(1){
         //start measuring data transfer rate
         timer.start();
 
         //request for single data block
-        s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
+        if(!stop){
 
-        //read until data start delimiter
+            s_tcp << "ACQ:START;" << "\r\n";
+            s_tcp << ":ACQ:TRIG CH1_PE;" << "\r\n";
+
+            s_tcp << "ACQ:SOUR1:DATA?" << "\r\n";
+            requests_pending++;
+            //keep small request queue on the server (speed boost x2)
+            if(requests_pending < 2) continue;
+        }else if(requests_pending == 0){
+            //get out from acquisition loop only after input queue
+            //was read completely
+            break;
+        }
+
+        //read byte by byte until data start delimiter
         do{ s_tcp.read(&c,1); } while(c != '#');
 
         //read number of chars describing data length
         s_tcp.read(&c,1);
         auto l = stoi(string(1,c));
 
-        //read and convert to numeric the data length
+        //read data length and convert it to numeric type
         ch_n_pts.clear();
         ch_n_pts.resize(l+1);
         s_tcp.read(ch_n_pts.data(),l);
         ch_n_pts.at(l) = 0;
+        //TODO: check size is correct (multiple of 4, less than buffer), apply asserts
         auto dl = stoi(string(ch_n_pts.data()));
 
-        //read points, TODO: BUG on size of vector to read, shell be more generic
+        //read points
         data_ptr.reset(new t_plain_data());
         data_ptr->resize(dl);
         s_tcp.read(static_cast<char*>((void*)data_ptr->data()),dl);
+        requests_pending--;
 
-        //(send data to main app) is it thread safe?
+        //(send data to main app)
+        //TODO: is it thread safe?
         adq_io.push_back(data_ptr);
 
         timer.stop();
         timer.res = dl;
-        cout << "BLOCK RECEIVED "<< timer << endl;
-    }while(!stop);
+        cout << timer << endl;
+    };
 
     s_tcp.flush();
     cout << "Reset server, close connection" << endl;
@@ -134,40 +138,39 @@ protected:
 
         if(!data) return;
 
-        for(int i = 0; i < 128; i+=4)
-        {
+        float y;
+        int start = 0, end = Nx;
+        for(int i = 0; i < Nx; i++){
 
-            float v;
-            memcpy((void*)&v,(void*)&data->data()[i],2);
-
-            cout << bitset<8>(data->data()[i]) << " "
-                 << bitset<8>(data->data()[i+1]) << " "
-                 << bitset<8>(data->data()[i+2]) << " "
-                 << bitset<8>(data->data()[i+3]) << "    " << v;
-
-            int i1 = data->data()[i+1]; i1 = i1 << 8;
-            int i2 = data->data()[i+2];
-            i1 = i1 + i2;
-            cout << "   " << i1 << endl;
-        }
-
-
-        /*for(int i = 0; i < Nx; i++){
+            //simple time rediscretization
             int idx = (i - ts)*scale[t_scale_idx]*10/(dt*Nx);
-            float y = 0;
-            if(idx >= 0 && idx < Nx){
-                //y = ntohl(data->data()[idx]);
-                y = data->data()[idx];//*1e-6;
-
-                //cout << idx << " " << bitset<32>(y) << endl;
+            if(idx < 0){
+                start++;
+            }else if(idx > Nx){
+                end--;
+            }else{
+                //TODO: Wrong data indexing (bytes array VS float array): kill *4
+                y = ieee754_1985_to_float(&data->data()[4*idx]);
                 y = (((double)Ny/((double)8*scale[v_scale_idx]))*y+(double)Ny/2+cv);
             }
 
-            v[i].y = y>=0 && y < Ny ? y : 0;
-            v[i].color = al_map_rgb(255,0,0); //why?
+            //truncate signal that is out of screen range
+            if(y > Ny){
+                v[i].color = al_map_rgba(255,0,0,100);
+                v[i].u = 127;
+                v[i].v = 127;
+                v[i].y = Ny+1;
+            }else if(y < 0){
+                v[i].color = al_map_rgba(255,0,0,50);
+                v[i].y = 0;
+            }else{
+                v[i].y = y;
+                v[i].color = al_map_rgb(255,0,0);
+            }
+
         }
 
-        al_draw_prim(v.data(), nullptr, nullptr, 0, Nx, ALLEGRO_PRIM_LINE_STRIP);*/
+        if(start < end) al_draw_prim(v.data(), nullptr, nullptr, start, end, ALLEGRO_PRIM_LINE_STRIP);
 
     }
 
@@ -199,8 +202,8 @@ protected:
     size_t& getNy(){return Ny;};
 
 protected:
-    size_t Nx = 375; //screen width (10)
-    size_t Ny = 300; //screen height (8)
+    size_t Nx = 375*2; //screen width (10)
+    size_t Ny = 300*2; //screen height (8)
     double dt = 0.008e-6; //125Mhz
     t_plain_data_ptr data = nullptr;
     vector<ALLEGRO_VERTEX> v;
@@ -219,7 +222,7 @@ int main(){
 
     //create scope window
     Window w(unique_ptr<Oscilloscope>(new Oscilloscope()));
-    w.create_window(375,300);
+    w.create_window(375*2,300*2);
 
     //after this line we get 16k points each 60ms
     thread adq(&acquisition_proc);
@@ -234,4 +237,11 @@ int main(){
 
     return 0;
 }
+
+/**
+ * Unused commands:
+ * s_tcp << "ACQ:TRIG:DLY 500;:ACQ:TRIG:LEV 30;" << "\r\n";
+ * s_tcp << "ACQ:TRIG:STAT?" << "\r\n";
+ *
+ */
 
