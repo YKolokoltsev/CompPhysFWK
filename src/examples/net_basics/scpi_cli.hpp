@@ -61,7 +61,7 @@ protected:
             if(!stop){
 
                 s_tcp << "ACQ:START;" << "\r\n";
-               // s_tcp << ":ACQ:TRIG CH1_PE;" << "\r\n";
+                s_tcp << ":ACQ:TRIG CH1_PE;" << "\r\n";
 
                 s_tcp << "ACQ:SOUR1:DATA?" << "\r\n";
                 requests_pending++;
