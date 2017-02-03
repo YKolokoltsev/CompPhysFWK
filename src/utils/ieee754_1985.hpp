@@ -10,6 +10,7 @@
 #define IEEE754_1985_HPP
 
 #include <memory>
+#include <bitset>
 
 /*
  * TODO: this code has a bug for 'inf' and 'undef' values
@@ -26,11 +27,13 @@ float ieee754_1985_to_float(const char* bin){
     //reorder bytes from network byte order to host byte order
     ul = ntohl(ul);
 
+    cout << bitset<32>(ul) << " ";
+
     //move all 1 bit left, it will eliminate sign bit and
     //put a 8-bit exponent into highest byte; the new 24-bit mantissa now has correct position
     //and shell not be modified
-    ul = ul << 1;
-    char Exp8 = ul >> 24;
+    //ul = ul << 1;
+    char Exp8 = (ul << 1) >> 24;
 
     //convert 8-bit exponent into 7-bit exponent; the 8-bit exponent has 127 center and its max is 255
     //the 7-bit exponent is centered about 63 and has max at 127. The excess of exp sizes will be truncated
@@ -54,7 +57,35 @@ float ieee754_1985_to_float(const char* bin){
     //ul contains the resulting float binary value that is to be copied into the system float
     float v;
     memcpy(&v,&ul,4);
+
+    cout << bitset<32>((*static_cast<int*>((void*)&v))) << " " << v << endl;
+
+
+
+
+   /* int ul = (*static_cast<int*>((void*)bin));
+
+    //reorder bytes from network byte order to host byte order
+    ul = ntohl(ul);
+
+    cout << bitset<32>(ul) << " ";
+
+    //move all 1 bit left, it will eliminate sign bit and
+    //put a 8-bit exponent into highest byte; the new 24-bit mantissa now has correct position
+    //and shell not be modified
+
+    int Mant = (int)(ul&0x007FFFFF);
+    Mant = Mant << 2;
+    double Exp = double(((char) ((ul << 1) >> 24)) - 127);
+
+    float v = 0.314654564;
+    //memcpy(&v,&Mant,4);
+
+    cout << Exp << "  " << bitset<32>(*static_cast<int*>((void*)&v)) << endl; */
+
     return v;
 }
 
 #endif //IEEE754_1985_HPP
+
+//https://www.h-schmidt.net/FloatConverter/IEEE754.html
