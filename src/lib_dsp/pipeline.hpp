@@ -65,11 +65,11 @@ public:
     }
 
     bool put(t_IN_PTR&& val, QUEUE_POLICY pol = QUEUE_POLICY::drop){
-        //lock local state
-        unique_lock<mutex> lck(local_state_mtx);
-
         //broken pipe
         if(!is_running()) return false;
+
+        //lock local state
+        unique_lock<mutex> lck(local_state_mtx);
 
         //input queue is full
         if(in.size() > 10){

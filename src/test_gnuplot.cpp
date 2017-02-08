@@ -7,7 +7,7 @@
 
 using namespace std;
 
-int main(){
+int main(int argc, char** argv){
 
 	Gnuplot gp(stdout);
 		// Create a script which can be manually fed into gnuplot later:

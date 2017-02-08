@@ -15,7 +15,7 @@
 
 using namespace std;
 
-int main(){
+int main(int argc, char** argv){
     Plotter plotter("set term x11 enhanced font 'arial,15' persist");
 
     double sigma = 0.1;

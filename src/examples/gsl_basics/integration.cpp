@@ -104,7 +104,7 @@ ns_timer<double> numeric_integration(){
     return timer;
 }
 
-int main(){
+int main(int argc, char** argv){
     cout << endl;
     cout << "GSL Linear interpolation (" << N << " pts) : " << linear_data_interpolation() << endl;
     cout << "GSL Nonuniform integration 5-th order " << numeric_integration() << endl;

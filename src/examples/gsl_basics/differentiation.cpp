@@ -73,7 +73,7 @@ void show(t_list_plots data){
 }
 
 
-int main(){
+int main(int argc, char** argv){
 
     t_list_plots plots;
     plots.resize(3);

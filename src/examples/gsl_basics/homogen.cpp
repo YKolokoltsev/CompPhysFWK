@@ -133,7 +133,7 @@ double psi(double x, t_solution& Y1, t_solution& Y2, double Vo = 1){
     return res;
 }
 
-int main(){
+int main(int argc, char** argv){
 
     //initialize differential equations solver
     gsl_odeiv2_system sys = {f, nullptr, 2, nullptr};

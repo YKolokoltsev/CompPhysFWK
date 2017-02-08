@@ -36,7 +36,7 @@ bool dev_proc(tDevice::t_IN_PTR&& msg){
     return true;
 }
 
-int main(){
+int main(int argc, char** argv){
     //better use dynamic memory, at the moment of filter linkage
     //in any case there shell be used pointers, so if these object
     //are created in stack a broken exception can happen at distruction
