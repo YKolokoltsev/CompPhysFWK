@@ -25,6 +25,7 @@ t_F_BIN_FLOAT::t_OUT_PTR bin_float_proc(t_F_BIN_FLOAT::t_IN_PTR&& in_msg){
         out_msg->data[i] = (double)ieee754_1985_to_float(&in_msg->bin_frame.data()[i*4]);
     }
     out_msg->dt = move(in_msg->dt);
+//    cout << out_msg->data.size() << "  " << out_msg->dt << endl;
     return out_msg;
 };
 
@@ -55,6 +56,14 @@ t_F_INTERPOLATE::t_OUT_PTR interpolate_proc(t_F_INTERPOLATE::t_IN_PTR&& in_msg){
     return out_msg;
 }
 
+/*
+using t_F_FFT = filter<DOUBLE_PKT, DOUBLE_PKT>;
+t_F_FFT::t_OUT_PTR fft_proc(t_F_FFT::t_IN_PKT&& in_msg){
+    t_F_FFT::t_OUT_PTR out_msg(new DOUBLE_PKT);
+
+    return out_msg;
+}
+*/
 //dummy device (just print statistics)
 using t_DUMMY_DEVICE = device<USR_INTERPOL_PKT>;
 bool dummy_dev_proc(t_DUMMY_DEVICE::t_IN_PTR&& in_msg){
@@ -65,9 +74,9 @@ bool dummy_dev_proc(t_DUMMY_DEVICE::t_IN_PTR&& in_msg){
 //oscilloscope device adaptor
 using t_OSC_ADAPTOR = push_pull_osc_adaptor<USR_INTERPOL_PKT>;
 
-int main(){
+int main(int argc, char** argv){
 
-    shared_ptr<scpi_client> cli(new scpi_client("192.168.100.4","5000"));
+    shared_ptr<scpi_client> cli(new scpi_client("192.168.1.72","5000"));
     shared_ptr<t_F_BIN_FLOAT> f_bin_float(new t_F_BIN_FLOAT(bin_float_proc));
     shared_ptr<t_F_INTERPOLATE> f_interpolate(new t_F_INTERPOLATE(interpolate_proc));
     //shared_ptr<t_DUMMY_DEVICE> dev(new t_DUMMY_DEVICE(dummy_dev_proc));
@@ -83,10 +92,16 @@ int main(){
     cli->start();
 
     Window w(unique_ptr<Oscilloscope>(new Oscilloscope(dev_osc_adaptor)));
-    w.create_window(375*2,300*2);
+    w.create_window(375*3,300*3);
 
+    //shared_ptr<BIN_PKT> pkt;
     while(1){
         if(!w.is_running()) break;
+        /*pkt.reset(new BIN_PKT);
+        for(int i = 0; i < pow(2,12); i++){
+            pkt->bin_frame.push_back(*static_cast<char*>((void*)&i));
+        }
+        f_bin_float->put(move(pkt));*/
     }
 
 };

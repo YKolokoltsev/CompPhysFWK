@@ -43,13 +43,20 @@ protected:
         //Connect to server and configure data acquisition
         s_tcp.connect(ip_str,port);
 
+        cout << "connected to " << ip_str << endl;
+
         //configure acquisition mode
-        s_tcp << "ACQ:DEC 1;" << "\r\n";
+
         s_tcp << "ACQ:DATA:FORMAT BIN" << "\r\n";
+        s_tcp << "ACQ:DEC 1024" << "\r\n";/* 1(131mks)  8(1ms)  64(8.4ms)  1024(134ms)  8192(1s)  65536 */
+//        s_tcp << "ACQ:AVG ON" << "\r\n";
+        s_tcp << "ACQ:TRIG:DLY 10" << "\r\n";
+//        s_tcp << "ACQ:TRIG:LEV 0" << "\r\n";
 
         int requests_pending = 0;
         bool stop = false;
         while(1){
+
             //check for terminate condition (fast, unblocking pull)
             t_IN_PTR curr_in = pull_msg(false);
             if(curr_in && curr_in->cmd == CMD_MSG::stop) stop = true;
@@ -59,11 +66,19 @@ protected:
 
             //request for single data block
             if(!stop){
+// Trigger source setting must be after ACQ:START
 
                 s_tcp << "ACQ:START;" << "\r\n";
-                s_tcp << ":ACQ:TRIG CH1_PE;" << "\r\n";
+                s_tcp << ":ACQ:TRIG ;" << "\r\n";
+/*
+                while(1){
+                    s_tcp << "ACQ:TRIG:STAT?" << "\r\n";
+                    s_tcp >> line;
+//                    cout << line << "; ";
+                    if (line.find("TD") != string::npos){ break; }
+                }*/
+                s_tcp << "ACQ:SOUR2:DATA?" << "\r\n";
 
-                s_tcp << "ACQ:SOUR1:DATA?" << "\r\n";
                 requests_pending++;
                 //keep small request queue on the server (speed boost x2)
                 if(requests_pending < 2) continue;
@@ -103,7 +118,7 @@ protected:
                 pkt.reset();
                 cerr << name << " no destination, data lost" << endl;
             }
-        }
+        }  // end_while
 
         s_tcp.flush();
         cout << "Reset server, close connection" << endl;

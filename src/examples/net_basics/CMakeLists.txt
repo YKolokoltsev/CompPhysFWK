@@ -5,6 +5,7 @@ find_package(GSL REQUIRED) #Basic math utils
 
 add_executable (redpitaya "redpitaya.cpp")
 target_link_libraries(redpitaya ${Boost_LIBRARIES})
+include_directories(redpitaya ${GSL_INCLUDE_DIR})
 target_link_libraries(redpitaya ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(redpitaya ${ALLEGRO_LIBRARIES})
 target_link_libraries(redpitaya ${GSL_LIBRARIES})

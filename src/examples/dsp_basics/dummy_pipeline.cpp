@@ -58,7 +58,7 @@ int main(){
     //src_proc call,  this is a simplest source use case,
     //the more advanced source will need to store it's current state, so it is better
     //to overload source class and reimplement it's main loop
-    for(int i = 0; i < 5; i++){
+    for(int i = 0; i < 100; i++){
         cout << "put src " << src->put(tSource::t_IN_PTR(new MESSAGE),QUEUE_POLICY::wait) << endl;
     }
 
