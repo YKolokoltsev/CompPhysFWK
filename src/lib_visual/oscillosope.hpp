@@ -29,7 +29,7 @@ public:
 
 class Oscilloscope : public Bitmap2DRenderer{
 public:
-    Oscilloscope(shared_ptr<osc_src_interface> src) : Bitmap2DRenderer(), Nx{375}, Ny{300}, src{src} {
+    Oscilloscope(shared_ptr<osc_src_interface> src) : Bitmap2DRenderer(), Nx{375*3}, Ny{300*3}, src{src} {
         v.resize(Nx);
         for(int i = 0; i < Nx; i++){
             v[i].x = i;
@@ -129,8 +129,8 @@ protected:
     size_t& getNy(){return Ny;};
 
 protected:
-    size_t Nx = 375*2; //screen width (10)
-    size_t Ny = 300*2; //screen height (8)
+    size_t Nx; //screen width (10)
+    size_t Ny; //screen height (8)
     double dt = 0.008e-6; //125Mhz
 //    t_plain_data_ptr data = nullptr;
     vector<ALLEGRO_VERTEX> v;

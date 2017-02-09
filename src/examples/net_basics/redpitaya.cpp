@@ -25,7 +25,7 @@ t_F_BIN_FLOAT::t_OUT_PTR bin_float_proc(t_F_BIN_FLOAT::t_IN_PTR&& in_msg){
         out_msg->data[i] = (double)ieee754_1985_to_float(&in_msg->bin_frame.data()[i*4]);
     }
     out_msg->dt = move(in_msg->dt);
-//    cout << out_msg->data.size() << "  " << out_msg->dt << endl;
+    cout << out_msg->data.size() << "  " << out_msg->dt << endl;
     return out_msg;
 };
 
@@ -76,7 +76,7 @@ using t_OSC_ADAPTOR = push_pull_osc_adaptor<USR_INTERPOL_PKT>;
 
 int main(int argc, char** argv){
 
-    shared_ptr<scpi_client> cli(new scpi_client("192.168.1.72","5000"));
+    shared_ptr<scpi_client> cli(new scpi_client("192.168.100.5","5000"));
     shared_ptr<t_F_BIN_FLOAT> f_bin_float(new t_F_BIN_FLOAT(bin_float_proc));
     shared_ptr<t_F_INTERPOLATE> f_interpolate(new t_F_INTERPOLATE(interpolate_proc));
     //shared_ptr<t_DUMMY_DEVICE> dev(new t_DUMMY_DEVICE(dummy_dev_proc));
