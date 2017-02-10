@@ -1,0 +1,11 @@
+1. generate an artificial signal (sin.. etc) and throw it to osc with filtering pipes
+
+2. make a trigger filter and cut signal with respect to it
+
+3. find minimas/maximas numerically
+
+4. make Cosine FT and throw it onto the second osc
+
+3. write a 3D ocs and show there a discrete laplace transform
+
+...

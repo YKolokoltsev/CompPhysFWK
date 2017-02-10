@@ -56,7 +56,7 @@ protected:
         s_tcp << "ACQ:RST;" << "\r\n";
         s_tcp << "ACQ:DATA:FORMAT BIN" << "\r\n";
         //this is always ON by default
-        s_tcp << "ACQ:AVG ON" << "\r\n";
+        s_tcp << "ACQ:AVG OFF" << "\r\n";
         //can't understand how DEC is working,  this is not as simple as it is written in documentation
         //1024 has buffer length ~8.5ms
         s_tcp << "ACQ:DEC 1024" << "\r\n";/* 1(131mks)  8(1ms)  64(8.4ms)  1024(134ms)  8192(1s)  65536 */
@@ -72,8 +72,9 @@ protected:
         s_tcp << "ACQ:TRIG:DLY?"  << "\r\n";
         s_tcp >> line;
         cout << "Trigger delay (samples) " << line << endl;
+        s_tcp << ":ACQ:TRIG:LEV 100" << "\r\n";
 
-//        s_tcp << "ACQ:TRIG:LEV 300" << "\r\n";
+
 
 
         int requests_pending = 0;
@@ -91,7 +92,7 @@ protected:
             if(!stop){
 
                 s_tcp << "ACQ:START" << "\r\n";
-                s_tcp << ":ACQ:TRIG CH1_PE;" << "\r\n";
+                s_tcp << "ACQ:TRIG EXT_NE" << "\r\n";
 
                 while(1){
                     s_tcp << "ACQ:TRIG:STAT?" << "\r\n";

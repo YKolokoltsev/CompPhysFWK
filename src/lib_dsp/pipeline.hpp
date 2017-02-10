@@ -27,35 +27,59 @@ struct MESSAGE{
     CMD_MSG cmd = CMD_MSG::none;
 };
 
-template <typename T_MSG>
-shared_ptr<T_MSG> cmd(CMD_MSG cmd){
-    static_assert(is_base_of<MESSAGE,T_MSG>(),"The T_MSG shell be derived from MESSAGE class");
-    shared_ptr<T_MSG> msg(new T_MSG);
+/*
+ * The input queue of any filter contains pointers onto the messages of it's own, filter's custom
+ * type 'T_IN'. It is possible to save some memory by upcasting queue type to MESSAGE,  however it
+ * will require continuous and dangerous downcast of the working messages. In our case it is better
+ * to loose a bit of memory in command messages, there is a little of them.
+ */
+template <typename T_IN>
+shared_ptr<T_IN> cmd(CMD_MSG cmd){
+    static_assert(is_base_of<MESSAGE,T_IN>(),"The T_MSG shell be derived from MESSAGE class");
+    shared_ptr<T_IN> msg(new T_IN);
     msg->cmd = cmd;
     return msg;
 }
 
 
 //***************DUMMY THREAD WITH INPUT MESSAGE QUEUE***********************
+/*
+ * There is two basic usages of this class:
+ * 1. There is no need to store any additional local state variables in the child process
+ * and it shell have just an input queue of specified messages. This can be a statistics terminal
+ * device or any other simple end-point. In this case we can use a second constructor and specify
+ * a process_usr_msg pointer to a function.
+ *
+ * 2. It is possible to derive any functional type from this one extending/overwriting it functions with
+ * something useful: IN-OUT type (filter),  stateful end-device/source etc...
+ */
 template<typename T_IN>
-class msg_thread{
+class BaseNode{
     static_assert(is_base_of<MESSAGE,T_IN>(),"The T_IN_MSG shell be derived from MESSAGE class");
 
 public:
     using t_IN_PTR = shared_ptr<T_IN>;
 
-    msg_thread(QUEUE_POLICY pol, string name = ""): pol{pol}, name{name}{
+    BaseNode(string name = ""): name{name}{}
+    BaseNode(function<bool(t_IN_PTR&&)> func_process, string name=""): name{name},  func_process{func_process} {};
+
+    virtual ~BaseNode(){
+        // Each 'BaseNode' child is a node in some distributed network
+        // if a process just disappear (even gracefully), the connectivity of the graph can be altered,
+        // making it impossible to run wave algorithms, such as an explicit termination.
+        // So by default we start a "stop" propagation wave over all the network and therefore
+        // kill it. In special cases this destructor can be overwritten.
+
+        // Join with a thread that called destructor
+        stop();
     }
-    ~msg_thread(){stop();}
 
-    void join(){ own_thread.join();}
-
-    bool is_running(){return v_running;}
+    //bool is_running(){return v_running;}
 
     void start(){
         own_thread = thread(run,this);
         //todo: remove this add hook
-        while(!is_running()) std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        while(!v_running) std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 
     void stop(){
@@ -65,10 +89,12 @@ public:
     }
 
     bool put(t_IN_PTR&& val, QUEUE_POLICY pol = QUEUE_POLICY::drop){
-        //broken pipe
-        if(!is_running()) return false;
+        //No messages can be accepted until this node has a working
+        //message thread. This is just a safe solution. Probably can be eliminated
+        //after implementation of various todo
+        if(!v_running) return false;
 
-        //lock local state
+        //lock a local state for inter-thread communication
         unique_lock<mutex> lck(local_state_mtx);
 
         //input queue is full
@@ -79,7 +105,7 @@ public:
                 event.wait(lck,[this]{return in.size() <= 10;});
             }else if(pol == QUEUE_POLICY::drop){
                 //the message was sent via rvalue, so it is dropped if not stored
-                //in this case shared_ptr<> destructor is called
+                //in this case the message shared_ptr<> destructor is called
                 return false;
             }
         }
@@ -93,15 +119,27 @@ public:
     }
 
 protected:
+    //We have two basic usages of this class. In the case when process
+    // Any child can overwrite this function it is
     virtual void main(){
         t_IN_PTR curr_in;
         while(1){
             curr_in = pull_msg();
+            //todo: implement a clear termination algorithm here
             if(curr_in->cmd == CMD_MSG::stop) break;
-            if(!process_usr_msg(move(curr_in))){ cerr << "usr msg failed (data may be lost)" << endl; }
+            if(!process_usr_msg(move(curr_in))){
+                cerr << "warning: process_usr_msg failed, send 'stop' if critical but return 'true'" << endl;
+            }
         }
     }
-    virtual bool process_usr_msg(t_IN_PTR&& msg){cerr << "warning: not overloaded!!!" << endl; return false;};
+    virtual bool process_usr_msg(t_IN_PTR&& msg){
+        if(!func_process){
+            cerr << "warning: user function not specified nor overloaded, pointless but possible" << endl;
+            return true;
+        }else{
+            return func_process(move(msg));
+        }
+    };
 
     t_IN_PTR pull_msg(bool wait = true){
         unique_lock<mutex> lck(local_state_mtx);
@@ -120,16 +158,17 @@ private:
     //static function can't be virtual, so it is a dummy wrapper for virtual implementation
     //this approach permits override loop body in child class if necessary (this is the case for different child sources)
     //resulting design is also a bit faster because here we move directly to class address space
-    static void run(msg_thread* f){
+    static void run(BaseNode* f){
         f->v_running = true;
         f->main();
         f->v_running = false;
     };
 
 protected:
-    QUEUE_POLICY pol;
     string name;
     mutex local_state_mtx;
+    //todo: user function to be called in a simple end-point node
+    function<bool(t_IN_PTR&&)> func_process{nullptr};
 
 private:
     thread own_thread;
@@ -141,16 +180,16 @@ private:
 //****************************SOURCE CLASS***********************
 
 template<typename T_OUT>
-class source : public msg_thread<MESSAGE>{
+class source : public BaseNode<MESSAGE>{
     static_assert(is_base_of<MESSAGE,T_OUT>(),"T2 shell be derived from MESSAGE class");
 public:
-    using tBase = msg_thread<MESSAGE>;
+    using tBase = BaseNode<MESSAGE>;
     using t_OUT_PTR = shared_ptr<T_OUT>;
     using t_IN_PTR = tBase::t_IN_PTR;
     source(function<t_OUT_PTR()> func_acquire, QUEUE_POLICY pol = QUEUE_POLICY::drop, string name = ""):
-            func_acquire{func_acquire}, tBase(pol, name){}
+            func_acquire{func_acquire}, tBase(name), pol(pol) {}
 
-    void set_target(shared_ptr<msg_thread<T_OUT>> target){next = target;}
+    void set_target(shared_ptr<BaseNode<T_OUT>> target){next = target;}
 
 protected:
     virtual void main(){
@@ -158,7 +197,7 @@ protected:
     }
     virtual bool process_usr_msg(t_IN_PTR && msg){
         if(next){
-            next->put(func_acquire(), tBase::pol);
+            next->put(func_acquire(), pol);
         }else{
             cerr << "broken pipe detected" << endl;
             return false;
@@ -166,48 +205,30 @@ protected:
         return true;
     };
 protected:
+    QUEUE_POLICY pol;
     function<t_OUT_PTR()> func_acquire;
-    shared_ptr<msg_thread<T_OUT>> next{nullptr};
-};
-
-//*************************DEVICE CLASS***********************
-
-template<typename T_IN>
-class device : public msg_thread<T_IN>{
-
-public:
-    using tBase = msg_thread<T_IN>;
-    using t_IN_PTR = shared_ptr<T_IN>;
-    device(function<bool(t_IN_PTR&&)> func_process, string name = ""):
-            func_process(func_process), tBase(QUEUE_POLICY::drop/*not used*/, name){}
-
-protected:
-    virtual bool process_usr_msg(t_IN_PTR&& msg){
-        return func_process(move(msg));
-    };
-private:
-    function<bool(t_IN_PTR&&)> func_process;
+    shared_ptr<BaseNode<T_OUT>> next{nullptr};
 };
 
 //************************FILTER***********************
 template<typename T_IN, typename T_OUT>
-class filter : public msg_thread<T_IN>{
+class filter : public BaseNode<T_IN>{
     static_assert(is_base_of<MESSAGE,T_OUT>(),"T2 shell be derived from MESSAGE class");
 
 public:
-    using tBase = msg_thread<T_IN>;
+    using tBase = BaseNode<T_IN>;
     using t_IN_PTR = shared_ptr<T_IN>;
     using t_OUT_PTR = shared_ptr<T_OUT>;
 
     filter(function<t_OUT_PTR(t_IN_PTR&&)> func_filter, QUEUE_POLICY pol = QUEUE_POLICY::drop, string name = ""):
-            func_filter(func_filter), msg_thread<T_IN>(pol,name) {}
+            func_filter(func_filter), BaseNode<T_IN>(name), pol(pol) {}
 
-    void set_target(shared_ptr<msg_thread<T_OUT>> target){next = target;}
+    void set_target(shared_ptr<BaseNode<T_OUT>> target){next = target;}
 
 protected:
     virtual bool process_usr_msg(t_IN_PTR&& msg){
         if(next){
-            return next->put(func_filter(move(msg)),tBase::pol);
+            return next->put(func_filter(move(msg)), pol);
         }else{
             cerr << "broken pipe detected" << endl;
             return false;
@@ -215,7 +236,8 @@ protected:
     };
 
 private:
-    shared_ptr<msg_thread<T_OUT>> next;
+    QUEUE_POLICY pol;
+    shared_ptr<BaseNode<T_OUT>> next;
     function<t_OUT_PTR(t_IN_PTR&&)> func_filter;
 };
 

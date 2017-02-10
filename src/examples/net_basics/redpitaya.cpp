@@ -65,7 +65,7 @@ t_F_FFT::t_OUT_PTR fft_proc(t_F_FFT::t_IN_PKT&& in_msg){
 }
 */
 //dummy device (just print statistics)
-using t_DUMMY_DEVICE = device<USR_INTERPOL_PKT>;
+using t_DUMMY_DEVICE = BaseNode<USR_INTERPOL_PKT>;
 bool dummy_dev_proc(t_DUMMY_DEVICE::t_IN_PTR&& in_msg){
     cout << in_msg->data_y.size() << " " << in_msg->dt << " data sample: " << in_msg->data_y[100] << endl;
     return true;
