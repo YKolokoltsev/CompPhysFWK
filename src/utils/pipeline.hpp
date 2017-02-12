@@ -1,5 +1,5 @@
 //
-// Created by morrigan on 1/30/17.
+// Created by Dr, Yevgeniy Kolokoltsev on 1/30/17.
 //
 
 #ifndef COMPPHYSFWK_PIPELINE_HPP

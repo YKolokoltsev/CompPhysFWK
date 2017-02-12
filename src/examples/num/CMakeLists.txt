@@ -25,3 +25,8 @@ set_property(TARGET ex_num_homogen PROPERTY CXX_STANDARD 11)
 
 add_executable (ex_num_numerov numerov.cpp)
 set_property(TARGET ex_num_numerov PROPERTY CXX_STANDARD 11)
+
+add_executable (ex_num_inout inout.cpp)
+target_include_directories(ex_num_inout PUBLIC ${GNUPLOT_IOS_INCLUDE_DIR})
+target_link_libraries(ex_num_inout ${Boost_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
+set_property(TARGET ex_num_inout PROPERTY CXX_STANDARD 11)
