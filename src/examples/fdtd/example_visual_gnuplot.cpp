@@ -6,7 +6,7 @@
  */
 
 #include <iostream>
-#include "../lib_visual/gnuplot_i.hpp"
+#include "../../lib_visual/gnuplot_i.hpp"
 
 #define SLEEP_LGTH 2  // sleep time in seconds
 #define NPOINTS    50 // length of array

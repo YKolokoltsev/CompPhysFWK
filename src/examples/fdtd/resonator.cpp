@@ -11,9 +11,9 @@
 #include <list>
 #include <memory>
 
-#include "../lib_fdtd/advanced/example_fdtd_2dite.hpp"
-#include "../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
-#include "../lib_fdtd/diplay/em_field_intensity_display.hpp"
+#include "../../lib_fdtd/advanced/example_fdtd_2dite.hpp"
+#include "../../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
+#include "../../lib_fdtd/diplay/em_field_intensity_display.hpp"
 
 using namespace std;
 

@@ -5,8 +5,8 @@
 #ifndef COMPPHYSFWK_OSCILLOSCOPE_ADAPTOR_HPP
 #define COMPPHYSFWK_OSCILLOSCOPE_ADAPTOR_HPP
 
-#include "../lib_visual/oscillosope.hpp"
-#include "pipeline.hpp"
+#include "../../lib_visual/oscillosope.hpp"
+#include "../../utils/pipeline.hpp"
 
 struct INTERPOL_PKT : public MESSAGE,  public OSC_INTERP_FRAME{};
 

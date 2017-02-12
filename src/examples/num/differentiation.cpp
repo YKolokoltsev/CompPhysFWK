@@ -53,7 +53,6 @@ double d5_gsl_c(double x, double h){
     return res;
 }
 
-
 using plot = vector<tuple<double,double>>;
 using t_list_plots = vector<plot>;
 

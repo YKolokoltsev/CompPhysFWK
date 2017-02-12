@@ -811,7 +811,7 @@ cmplx FADDEEVA(w)(cmplx z, double relerr)
      where we compute all of the sums is faster (at least with the
      precomputed expa2n2 table) until about x=10.  Furthermore, if we
      try to compute all of the sums for x > 20, I find that we
-     sometimes run into numerical problems because underflow/overflow
+     sometimes run into num problems because underflow/overflow
      problems start to appear in the various coefficients of the sums,
      below.  Therefore, we use x < 10 here. */
   else if (x < 10) {

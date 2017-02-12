@@ -22,3 +22,6 @@ target_include_directories(homogen PUBLIC ${GSL_INCLUDE_DIR})
 target_link_libraries(homogen ${Boost_LIBRARIES} ${Boost_FILESYSTEM_LIBRARY} ${Boost_SYSTEM_LIBRARY})
 target_link_libraries(homogen ${GSL_LIBRARIES})
 set_property(TARGET homogen PROPERTY CXX_STANDARD 11)
+
+add_executable (numerov numerov.cpp)
+set_property(TARGET numerov PROPERTY CXX_STANDARD 11)

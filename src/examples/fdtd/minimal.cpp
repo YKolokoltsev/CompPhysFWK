@@ -7,8 +7,8 @@
 
 #include <iostream>
 
-#include "../lib_fdtd/lib_fdtd.h"
-#include "../lib_visual/lib_visual.h"
+#include "../../lib_fdtd/lib_fdtd.h"
+#include "../../lib_visual/lib_visual.h"
 
 class ExMin2Dfdtd : public EMLeapfrogMultiproc<Field2D, Cell2DTE<Plain2DIndex>>{
 public:

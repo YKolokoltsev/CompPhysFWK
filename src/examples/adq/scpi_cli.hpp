@@ -11,7 +11,7 @@
 
 #include <boost/asio.hpp>
 
-#include "../../lib_dsp/pipeline.hpp"
+#include "../../utils/pipeline.hpp"
 #include "../../utils/performance.hpp"
 
 using namespace std;

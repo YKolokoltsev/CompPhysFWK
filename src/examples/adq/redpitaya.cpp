@@ -8,7 +8,7 @@
 #include "../../lib_visual/oscillosope.hpp"
 #include "../../lib_visual/window.hpp"
 #include "../../utils/ieee754_1985.hpp"
-#include "../../lib_dsp/oscilloscope_adaptor.hpp"
+#include "oscilloscope_adaptor.hpp"
 
 //filter converting binary data to float and then cast to double
 struct DOUBLE_PKT : public MESSAGE{

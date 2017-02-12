@@ -4,7 +4,7 @@
 
 #include <chrono>
 
-#include "../../lib_dsp/pipeline.hpp"
+#include "../../utils/pipeline.hpp"
 
 using namespace std;
 
