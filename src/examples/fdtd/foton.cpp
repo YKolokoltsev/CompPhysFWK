@@ -4,9 +4,9 @@
 #include <list>
 #include <memory>
 
-#include "../lib_fdtd/advanced/example_fdtd_2dite.hpp"
-#include "../utils/faddeeva.h"
-#include "../lib_fdtd/diplay/em_field_intensity_display.hpp"
+#include "../../lib_fdtd/advanced/example_fdtd_2dite.hpp"
+#include "../../utils/faddeeva.h"
+#include "../../lib_fdtd/diplay/em_field_intensity_display.hpp"
 
 using namespace std;
 
@@ -31,7 +31,7 @@ double GaussianPW(double lambda, double fi, double x, double y,  double x0, doub
 
 }
 
-#include "../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
+#include "../../lib_fdtd/advanced/example_fdtd_2nd_mur.hpp"
 
 class ExLaserfdtd : public ExFDTD2ndTEMur {//Ex2DITEfdtd {
 public:

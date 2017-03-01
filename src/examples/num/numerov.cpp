@@ -12,22 +12,23 @@
 
 using namespace std;
 
+using T = float;
+
 //dummy function that returns zero, used to test Numerov engine performance
-double f(const double){
-    return 0;
-}
+T f(const T){ return 0; }
 
 int main(int argc, char** argv){
 
     ns_timer<string> timer;
-    const double h = 1;
+    const T h = 1.0;
     const size_t N = 1000;
-    array<double,2> y{0,0.101};
+    array<T,2> y{0,0.101};
 
-    Numerov<nullptr,nullptr,DIR::fwd>::t_numerov a00(h);
-    Numerov<nullptr,f,DIR::fwd>::t_numerov       a01(h);
-    Numerov<f,nullptr,DIR::fwd>::t_numerov       a10(h);
-    Numerov<f,f,DIR::fwd>::t_numerov             a11(h);
+
+    Numerov<T,nullptr,nullptr,DIR::fwd>::t_numerov a00(h,0);
+    Numerov<T,nullptr,f,DIR::fwd>::t_numerov       a01(h,0);
+    Numerov<T,f,nullptr,DIR::fwd>::t_numerov       a10(h,0);
+    Numerov<T,f,f,DIR::fwd>::t_numerov             a11(h,0);
 
     timer.start();
     for(size_t i = 0; i < N; i++) a00.eval_next(y);

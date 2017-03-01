@@ -16,6 +16,8 @@
 
 using namespace std;
 
+//todo: rewrite partial casees with variadic templates
+//todo: check out corners, augment accuracy
 class ExFDTD2ndTEMur : public Ex2DITEfdtd {
 public:
 	using tBase = Ex2DITEfdtd;

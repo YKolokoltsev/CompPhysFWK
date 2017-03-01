@@ -15,7 +15,7 @@ struct MY_MSG : public MESSAGE{
 //use of aliases permits type fast substitution,
 //this is the case for MY_MSG struct - it can be changed
 //between any piped pair (src-filter, filter-dev)
-using tDevice = device<MY_MSG>;
+using tDevice = BaseNode<MY_MSG>;
 using tSource = source<MY_MSG>;
 using tFilter = filter<MY_MSG,MY_MSG>;
 

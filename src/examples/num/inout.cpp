@@ -12,11 +12,10 @@
  *  This example will give us a taste of how strong is this effect and also
  *  is a good test-case on boundary points.
  *
- *  ... well, the Numerov algorithm with doubles is fkn stable
+ *  ... well, the Numerov algorithm even with float shows good coincidence
  */
 
 #include <iostream>
-#include <utility>
 #include <complex>
 
 #include "../../lib_num/numerov.hpp"
@@ -26,35 +25,33 @@ using namespace std;
 
 //just a constatnt wavenumber
 
-//todo: comlpex!!!
-using T = double;
-T k(const T){ return 5.0; }
+float k(const float){ return 20; }
 
 int main(int argc, char** argv){
 
     //computation parameters
-    const T x0{0}, x1{3};
-    const size_t N = 30;
-    array<T,2> y{T{0},T{3}};
+    const float x0{0}, x1{3};
+    const size_t N = 200;
+    array<float,2> y{0.0,0.1};
 
     //Numerov algorithm initialization
-    const T h = (x1 - x0)/(double)N;
+    const float h = (x1 - x0)/N;
 
     //Forward integration
-    Numerov<T,k,nullptr,DIR::fwd>::t_numerov num_fwd(h,x0+h);
+    Numerov<float,k,nullptr,DIR::fwd>::t_numerov num_fwd(h,x0+h);
 
-    vector<pair<T,T>> fwd(N);
+    vector<pair<float,float>> fwd(N);
     for(size_t i = 0; i < N; i++) {
-        fwd.at(i) = make_pair(abs(num_fwd.get_x()), abs(y[1]));
+        fwd.at(i) = make_pair(num_fwd.get_x(), y[1]);
         num_fwd.eval_next(y);
     }
 
     //Backward integration
-    Numerov<T,k,nullptr,DIR::bwd>::t_numerov num_bwd(h,num_fwd.get_x()-h);
+    Numerov<float,k,nullptr,DIR::bwd>::t_numerov num_bwd(h,num_fwd.get_x()-h);
 
-    vector<pair<T,T>> bwd(N);
+    vector<pair<float,float>> bwd(N);
     for(size_t i = 0; i < N; i++) {
-        bwd.at(i) = make_pair(abs(num_bwd.get_x()), abs(y[0]));
+        bwd.at(i) = make_pair(num_bwd.get_x(), y[0]);
         num_bwd.eval_next(y);
     }
 
