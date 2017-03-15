@@ -49,6 +49,9 @@ public:
 
 int main (){
 
+    //This is to show that if I know Sp_m and I_m - it is enough
+    //information to calculate I - Sp, the index inside Out_p
+
     for(int Sp = -100; Sp < 12345; Sp++){
         //Arbitrary I from range in Qp
         int I = Sp-L + (rand() % (2*L));
