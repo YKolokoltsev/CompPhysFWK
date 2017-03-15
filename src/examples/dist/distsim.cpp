@@ -5,6 +5,7 @@
 #include <list>
 
 #include <boost/circular_buffer.hpp>
+#include <stdlib.h>
 
 using namespace std;
 using namespace boost;
@@ -17,6 +18,8 @@ public:
 };
 
 const int lp = 2;
+const int lq = 2;
+constexpr int L = lp + lq;
 
 struct msg{
     char di; //displacement from the top of out stream
@@ -44,21 +47,14 @@ public:
 
 
 int main (){
-    circular_buffer<msg> buf(3);
 
-    buf.push_back(msg{1});
-    buf.push_back(msg{2});
-    buf.push_back(msg{3});
-
-    buf.rotate(buf.begin()+1);
-    buf.rotate(buf.begin()+1);
-    buf.rotate(buf.begin()+2);
-
-    cout << buf.size() << endl;
-
-    for(auto m : buf){
-        cout << (int)m.di << endl;
+    for(int Sp = 10; Sp < 100; Sp++){
+        //int I = rand[Sp-L, Sp+L)....
     }
+
+    int a = 12345;
+    auto res = div(a,2*L);
+    cout << res.quot << " " << res.rem << "  " << a << "=" << (res.quot*2*L+res.rem) << endl;
 
     return 0;
 }
