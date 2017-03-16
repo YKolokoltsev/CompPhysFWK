@@ -6,7 +6,7 @@
 #define COMPPHYSFWK_OSCILLOSCOPE_ADAPTOR_HPP
 
 #include "../../lib_visual/oscillosope.hpp"
-#include "../../utils/pipeline.hpp"
+#include "../../lib_dist/pipeline.hpp"
 
 struct INTERPOL_PKT : public MESSAGE,  public OSC_INTERP_FRAME{};
 
