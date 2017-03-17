@@ -1,6 +1,10 @@
 //
-// Created by morrigan on 10/02/17.
+// Created by morrigan on 16/03/17.
 //
+
+#ifndef COMPPHYSFWK_SWP_FIFO_H
+#define COMPPHYSFWK_SWP_FIFO_H
+
 #include <iostream>
 #include <list>
 #include <memory>
@@ -12,18 +16,16 @@
 using namespace std;
 using namespace boost;
 
-const int lp = 2;
-const int lq = 1;
-constexpr int L = lp + lq;
+/*
+ * lp - local process ack retard
+ * lq - remote process ack retard
+ */
+template<int lp, int lq>
+class SWP_FIFO{
 
-class SWP_Proc{
-
-    /*
-     * the size and contents
-     */
-    using t_data = vector<char>;
-    using t_pkt = vector<char>;
-    using p_data = std::shared_ptr<t_data>;
+private:
+    using p_data = std::shared_ptr<vector<char>>;
+    static constexpr int L = lp + lq;
 
 //OUT WORLD FUNCTIONS
 public:
@@ -34,8 +36,8 @@ public:
          * read - requests for an input packet to be sent from the client,
          * returns false if nothing to read at the moment.
          */
-        function<void(const t_data&)> write;
-        function<t_data ()> read;
+        function<void(const vector<char>&)> write;
+        function<vector<char> ()> read;
 
         /*
          * Communication interface functions (not blocking!):
@@ -43,8 +45,8 @@ public:
          * receive - receives a packet (if something is really wrong: return nullptr)
          * is_empty - check if a receive channel queue is empty (needed for non-destructive event applicability check)
          */
-        function<void(const t_pkt& )> send;
-        function<t_pkt ()> receive;
+        function<void(const vector<char>& )> send;
+        function<vector<char> ()> receive;
         function<bool ()> is_empty;
     };
 
@@ -59,7 +61,7 @@ private:
         int I_m;
 
         /*
-         * size of data in bytes following packet header
+         * size of data in bytes following packet header of sizeof(pkt_head) bytes
          */
         size_t sz_data;
     };
@@ -118,7 +120,7 @@ private:
 
         void apply(proc_state& s){
             //take one packet from the communication channel
-            t_pkt pkt = s.receive();
+            vector<char> pkt = s.receive();
             //this can happen only if the external receive channel was modified after is_valid() call
             if(pkt.empty()){ cerr << "empty packet"; return; }
 
@@ -140,7 +142,8 @@ private:
             if(D < 0 || s.out_pool.at(D)) return;
 
             //store received data
-            s.out_pool.at(D) = p_data(new t_data(std::move(m->data)));
+            s.out_pool.at(D) = p_data(new vector<char>(m->sz_data));
+            memcpy(s.out_pool.at(D)->data(),pkt.data()+(pkt.size()-m->sz_data),m->sz_data);
 
             //detect a delivery confirmation for (D - lq + 1 - s.Dap) messages:
             //rise plain Ap (as well as DAp), eliminate delivered data from in_pool
@@ -152,7 +155,7 @@ private:
 
                     //append next data cell to input pool
                     //todo: move it to separate event?
-                    s.in_pool.push_back(p_data(new t_data(s.read())));
+                    s.in_pool.push_back(p_data(new vector<char>(s.read())));
 
                     s.DAp++;
                 };
@@ -185,19 +188,21 @@ private:
         void apply(proc_state& s){
             //get random message from in_pool
             int i = (rand() % (int)(s.in_pool.size()));
+            size_t sz_data = s.in_pool.at(i)->size();
             pkt_head msg{
                     .I_m = div(s.DAp + s.Sp_m + i,2*L).rem,
-                    .data = *s.in_pool.at(i)};
+                    .sz_data = sz_data};
 
-            t_pkt pkt(sizeof(msg));
+            vector<char> pkt(sizeof(msg)+sz_data);
             memcpy(pkt.data(),&msg,sizeof(msg));
+            memcpy(pkt.data()+sizeof(msg),s.in_pool.at(i)->data(),sz_data);
             s.send(pkt);
         }
     };
 
 
 public:
-    SWP_Proc(const IOFuncs& f){
+    SWP_FIFO(const IOFuncs& f){
         (IOFuncs) state = f;
         using p_e = unique_ptr<i_event>;
         events.insert(unique_ptr<i_event>(new e_rcv));
@@ -210,14 +215,4 @@ private:
     set<unique_ptr<i_event>> events;
 };
 
-
-
-
-
-
-
-int main (){
-
-
-    return 0;
-}
+#endif //COMPPHYSFWK_SWP_FIFO_H

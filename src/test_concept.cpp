@@ -6,33 +6,45 @@
  */
 #include <iostream>
 #include <cmath>
+#include <thread>
 
 using namespace std;
 
-template<typename T>
-using t_func = T(*)(T&, void*);
+struct MEM{
+    int a,b,c,d,e;
+} m;
 
-template<typename T,  t_func<T> F>
-struct tmpl_functor{
-    T operator()(T& x, void* params) const {
-        return F(x,params);
-    }
-};
-
-template<typename T>
-T f_impl(T& x, void* params){
-    return ++x;
+ostream &operator<<(ostream& os, const MEM& x){
+    os << "(" << x.a << "," << x.b << "," ;
+    os << x.c << "," << x.d << "," << x.e << ")";
 }
 
-template<typename T>
-using t_f = tmpl_functor<T,f_impl>;
+int run(){
+
+    for(int i = 0; i < 1000; i++){
+        ::this_thread::sleep_for(chrono::nanoseconds(1));
+        if(m.a != m.b || m.b != m.d || m.c != m.d || m.d != m.e)
+        cout << m << endl;
+    }
+
+    return 0;
+}
 
 int main(int argc, char** argv){
 
-    t_f<double> m_f;
+    thread a(&run);
 
-    double x = 1;
-    cout << m_f(x, nullptr) << endl;
+    for(int i = 0; i < 1000; i++){
+        m.a = i;
+        m.b = i;
+        m.c = i;
+        ::this_thread::sleep_for(chrono::nanoseconds(1));
+        m.d = i;
+        m.e = i;
+    }
+
+
+    a.join();
 
     return 0;
 }
