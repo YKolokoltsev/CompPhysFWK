@@ -73,6 +73,7 @@ public:
     using IOFuncs = typename t_Base::IOFuncs;
     using i_event = typename t_Base::i_event;
     SWP_FIFO_Rand(const IOFuncs& f, string uid) : t_Base(f, uid) {};
+
     void apply_random_event(){
         std::list<i_event*> applicable;
         for(auto e : t_Base::events) {
@@ -88,6 +89,20 @@ public:
         //cout << "applying: " << (*it)->get_uid() << endl;
         (*it)->apply(t_Base::state);
     }
+
+    string str_state(){
+        std::stringstream buf;
+        buf << "[.sz_in_pool=" << (lp - t_Base::state.DAp - (int)t_Base::state.in_pool.size()) << ",";
+        buf << ".DAp=" << t_Base::state.DAp << ",";
+        buf << ".Sp_m=" << t_Base::state.Sp_m << "]";
+        return buf.str();
+    }
+};
+
+template<int lp, int lq>
+ostream& operator<< (ostream& out, SWP_FIFO_Rand<lp,lq>& proc){
+    out << proc.str_state();
+    return out;
 };
 
 int main (){

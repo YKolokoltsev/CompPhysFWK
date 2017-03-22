@@ -45,12 +45,16 @@ shared_ptr<T_IN> cmd(CMD_MSG cmd){
 //***************DUMMY THREAD WITH INPUT MESSAGE QUEUE***********************
 /*
  * There is two basic usages of this class:
- * 1. There is no need to store any additional local state variables in the child process
- * and it shell have just an input queue of specified messages. This can be a statistics terminal
- * device or any other simple end-point. In this case we can use a second constructor and specify
+ * 1. There is no need to store any additional local state
+ * variables in the child process
+ * and it shell have just an input queue of specified messages. This
+ * can be a statistics terminal
+ * device or any other simple end-point. In this case we can use a
+ * second constructor and specify
  * a process_usr_msg pointer to a function.
  *
- * 2. It is possible to derive any functional type from this one extending/overwriting it functions with
+ * 2. It is possible to derive any functional type from this one
+ * extending/overwriting it functions with
  * something useful: IN-OUT type (filter),  stateful end-device/source etc...
  */
 template<typename T_IN>

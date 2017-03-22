@@ -232,24 +232,26 @@ public:
             events.insert(unique_ptr<i_event>(new e_send(idx)));
     }
 
-    string str_state(){
-        std::stringstream buf;
-        buf << "[.sz_in_pool=" << (lp - state.DAp - (int)state.in_pool.size()) << ",";
-        buf << ".DAp=" << state.DAp << ",";
-        buf << ".Sp_m=" << state.Sp_m << "]";
-        return buf.str();
-    }
-
 protected:
+    /*
+     * Internal process state as defined in "proc_state" struct excluding
+     * interface functions to the out world.
+     */
     proc_state state;
-    set<std::shared_ptr<i_event>> events;
-    string uid;
-};
 
-template<int lp, int lq>
-ostream& operator<< (ostream& out, SWP_FIFO<lp,lq>& proc){
-    out << proc.str_state();
-    return out;
+    /*
+     * A set of all deterministic events. These are not atomic events
+     * in a sense of discrete event tuples {pid, s_in, m_r, m_s, s_out},
+     * each of these events can produce a concrete tuple if applied to a concrete
+     * internal state + process input queue. A set of all possible atomic events is
+     * much more rich than this set.
+     */
+    set<std::shared_ptr<i_event>> events;
+
+    /*
+     * unique process ID
+     */
+    string uid;
 };
 
 #endif //COMPPHYSFWK_SWP_FIFO_H
