@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <set>
+#include <sstream>
 
 #include <boost/circular_buffer.hpp>
 
@@ -23,7 +24,7 @@ using namespace boost;
 template<int lp, int lq>
 class SWP_FIFO{
 
-private:
+protected:
     using p_data = std::shared_ptr<vector<char>>;
     static constexpr int L = lp + lq;
 
@@ -51,7 +52,7 @@ public:
     };
 
 //BASIC DATA STRUCTS
-private:
+protected:
 
     struct pkt_head{
         /*
@@ -67,6 +68,7 @@ private:
     };
 
     struct proc_state : public IOFuncs{
+        proc_state(const IOFuncs& f) : IOFuncs{f} {};
         /*
          * out_pool - is an ordered set of received data cells where zero
          * index coincide with plain Sp index in any accessible state. out_pool
@@ -80,7 +82,7 @@ private:
          * in this implementation
          */
         circular_buffer<p_data> out_pool{L,nullptr};
-        circular_buffer<p_data> in_pool;
+        circular_buffer<p_data> in_pool{L};
 
         /*
          * Sp - the lowest numbered word that process 'p' still expects from 'q'
@@ -96,7 +98,7 @@ private:
     };
 
 //EVENTS
-private:
+protected:
 
     /*
      * generic event interface is useful for
@@ -107,12 +109,18 @@ private:
      */
     class i_event{
     public:
-        virtual bool is_valid(const proc_state& s){};
-        virtual void apply(proc_state& s){};
+        virtual bool is_valid(const proc_state& s) = 0;
+        virtual void apply(proc_state& s) = 0;
+        string get_uid(){return uid;}
+    protected:
+        i_event(string uid): uid(uid){};
+    private:
+        string uid;
     };
 
     //RECEIVE EVENT
     struct e_rcv : public i_event{
+        e_rcv():i_event("e_rcv"){}
 
         bool is_valid(const proc_state& s){
             return !s.is_empty();
@@ -139,7 +147,7 @@ private:
             int D = d_q*2*L-d_r;
 
             //it is a retransmit, no new information received
-            if(D < 0 || s.out_pool.at(D)) return;
+            if(D < 0 || s.out_pool.at(D) != nullptr) { return; }
 
             //store received data
             s.out_pool.at(D) = p_data(new vector<char>(m->sz_data));
@@ -147,16 +155,11 @@ private:
 
             //detect a delivery confirmation for (D - lq + 1 - s.Dap) messages:
             //rise plain Ap (as well as DAp), eliminate delivered data from in_pool
-            //and take some more data from input queue
-            if(s.DAp < (D - lq + 1 ) ){
-                while(s.DAp != D - lq +1){
+            //---and take some more data from input queue
+            if(s.DAp < (D - lq + 1) ){
+                while(s.DAp != D - lq + 1){
                     //eliminate delivered data cell
                     s.in_pool.pop_front();
-
-                    //append next data cell to input pool
-                    //todo: move it to separate event?
-                    s.in_pool.push_back(p_data(new vector<char>(s.read())));
-
                     s.DAp++;
                 };
             }
@@ -180,39 +183,73 @@ private:
 
     //SEND EVENT
     struct e_send : public i_event{
+        e_send(int idx): i_event("e_send"), idx{idx}{
+            assert(idx >= 0 && idx < L);
+        }
 
         bool is_valid(const proc_state& s){
-            return !s.out_pool.empty();
+            return idx < s.in_pool.size();
         }
 
         void apply(proc_state& s){
-            //get random message from in_pool
-            int i = (rand() % (int)(s.in_pool.size()));
-            size_t sz_data = s.in_pool.at(i)->size();
+            size_t sz_data = s.in_pool.at(idx)->size();
             pkt_head msg{
-                    .I_m = div(s.DAp + s.Sp_m + i,2*L).rem,
+                    .I_m = s.DAp + s.Sp_m + idx,
                     .sz_data = sz_data};
+            if(msg.I_m < 0) msg.I_m += 2*L;
+            if(msg.I_m >= 2*L) msg.I_m -= 2*L;
 
             vector<char> pkt(sizeof(msg)+sz_data);
             memcpy(pkt.data(),&msg,sizeof(msg));
-            memcpy(pkt.data()+sizeof(msg),s.in_pool.at(i)->data(),sz_data);
+            memcpy(pkt.data()+sizeof(msg),s.in_pool.at(idx)->data(),sz_data);
             s.send(pkt);
+        }
+    private:
+        const int idx;
+    };
+
+    //READ EVENT
+    struct e_read : public i_event{
+        e_read():i_event("e_read"){}
+
+        bool is_valid(const proc_state& s){
+            return (s.DAp + (int)s.in_pool.size() < lp);
+        }
+
+        void apply(proc_state& s){
+            while(s.DAp + (int)s.in_pool.size() < lp)
+                s.in_pool.push_back(p_data(new vector<char>(s.read())));
         }
     };
 
 
 public:
-    SWP_FIFO(const IOFuncs& f){
-        (IOFuncs) state = f;
+    SWP_FIFO(const IOFuncs& f, string uid): state(f), uid{uid} {
         using p_e = unique_ptr<i_event>;
         events.insert(unique_ptr<i_event>(new e_rcv));
-        events.insert(unique_ptr<i_event>(new e_send));
-        cout << "Num. registered events: " << events.size() << endl;
+        events.insert(unique_ptr<i_event>(new e_read));
+        for(int idx = 0; idx < L; idx++)
+            events.insert(unique_ptr<i_event>(new e_send(idx)));
     }
 
-private:
+    string str_state(){
+        std::stringstream buf;
+        buf << "[.sz_in_pool=" << (lp - state.DAp - (int)state.in_pool.size()) << ",";
+        buf << ".DAp=" << state.DAp << ",";
+        buf << ".Sp_m=" << state.Sp_m << "]";
+        return buf.str();
+    }
+
+protected:
     proc_state state;
-    set<unique_ptr<i_event>> events;
+    set<std::shared_ptr<i_event>> events;
+    string uid;
+};
+
+template<int lp, int lq>
+ostream& operator<< (ostream& out, SWP_FIFO<lp,lq>& proc){
+    out << proc.str_state();
+    return out;
 };
 
 #endif //COMPPHYSFWK_SWP_FIFO_H
