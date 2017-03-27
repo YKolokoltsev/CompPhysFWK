@@ -7,39 +7,41 @@
 #include <iostream>
 #include <cmath>
 #include <stdlib.h>
+#include <bitset>
+#include <memory>
+#include <vector>
 
 using namespace std;
 
-const int lp = 2;
-const int lq = 4;
-constexpr int L = lp + lq;
+struct A{
+    virtual string get_name(){return "class A";}
+};
+
+struct B : public A{
+    virtual string get_name(){return ("class " + s);}
+    void print_true(){cout << "TRUEEEE";}
+    string s{"B"};
+};
+
+struct C : public A{
+
+};
 
 int main(int argc, char** argv){
 
-   int D_min = 0, D_max = 0;
-   for(int Sp = 0 ; Sp <= 100; Sp++){
-       int I = Sp + rand() % (2*L) - L;
-       int I_m = div(I,2*L).rem;
-       int Sp_m = div(Sp,2*L).rem;
+    using t_ptr = shared_ptr<A>;
+    vector<t_ptr> cont;
 
-       int d_r = Sp_m - I_m;
-       int d_q = d_r == L ? 0 : div(d_r,L).quot;
-       int D = d_q*2*L-d_r;
+    cont.push_back(t_ptr(new A()));
+    cont.push_back(t_ptr(new B()));
+    cont.push_back(t_ptr(new C()));
 
-       if(D_min > D) D_min = D;
-       if(D_max < D) D_max = D;
-   }
-
-
-    int size = 3;
-    D_min = size; D_max = 0;
-    for(int i = 0; i < 1000; i++){
-        int idx = (rand() % (int)(size));
-        if(D_min > idx) D_min = idx;
-        if(D_max < idx) D_max = idx;
+    for(auto & x : cont){
+        cout << x->get_name() << endl;
+        //if(x->get_name() == "class B"){
+            ((B*)((void*)x.get()))->print_true();
+        //}
     }
-
-    cout << D_min << " " << D_max << endl;
 
     return 0;
 }

@@ -10,6 +10,7 @@ using namespace std;
 
 struct MY_MSG : public MESSAGE{
     double val;
+    string a{"lala"};
 };
 
 //use of aliases permits type fast substitution,
@@ -27,12 +28,12 @@ tSource::t_OUT_PTR src_proc(){
 
 tFilter::t_OUT_PTR filter_proc(tFilter::t_IN_PTR&& in){
     tFilter::t_OUT_PTR out(new MY_MSG);
-    out->val = in->val + 1;
+    out->val = in->val + 10;
     return out;
 }
 
 bool dev_proc(tDevice::t_IN_PTR&& msg){
-    cout << msg->val << endl;
+    cout << msg->val << "VER!!!" << msg->a << endl;
     return true;
 }
 
@@ -50,9 +51,11 @@ int main(int argc, char** argv){
     f->set_target(dev);
     
     //start threads
-    src->start();
-    f->start();
     dev->start();
+    f->start();
+    src->start();
+
+
 
     //send some dummy messages to the source, each of these messages will produce a single
     //src_proc call,  this is a simplest source use case,
@@ -66,7 +69,7 @@ int main(int argc, char** argv){
     //system resource and when the process in which a text was sent is closed before the main app, its cout
     //is flushed. To che this you can add some delay before exit
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    //std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     return 0;
 }

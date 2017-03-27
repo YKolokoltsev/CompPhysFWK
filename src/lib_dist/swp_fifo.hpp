@@ -10,6 +10,7 @@
 #include <memory>
 #include <set>
 #include <sstream>
+#include <vector>
 
 #include <boost/circular_buffer.hpp>
 
@@ -17,39 +18,40 @@
 using namespace std;
 using namespace boost;
 
-/*
- * lp - local process ack retard
- * lq - remote process ack retard
- */
-template<int lp, int lq>
-class SWP_FIFO{
-
-protected:
-    using p_data = std::shared_ptr<vector<char>>;
-    static constexpr int L = lp + lq;
-
-//OUT WORLD FUNCTIONS
-public:
-    struct IOFuncs{
-        /*
+struct IOFuncs {
+    /*
          * Client side functions (not blocking!):
          * write - passes a received data cell to the client
          * read - requests for an input packet to be sent from the client,
          * returns false if nothing to read at the moment.
          */
-        function<void(const vector<char>&)> write;
-        function<vector<char> ()> read;
+    virtual void write(const std::vector<char>& w){};
+    virtual std::vector<char> read(){return std::vector<char>();};
 
-        /*
-         * Communication interface functions (not blocking!):
-         * send - send any plain packet to remote process (can be another thread, process or a remote machine)
-         * receive - receives a packet (if something is really wrong: return nullptr)
-         * is_empty - check if a receive channel queue is empty (needed for non-destructive event applicability check)
-         */
-        function<void(const vector<char>& )> send;
-        function<vector<char> ()> receive;
-        function<bool ()> is_empty;
-    };
+    /*
+     * Communication interface functions (not blocking!):
+     * send - send any plain packet to remote process (can be another thread, process or a remote machine)
+     * receive - receives a packet (if something is really wrong: return nullptr)
+     * is_empty - check if a receive channel queue is empty (needed for non-destructive event applicability check)
+     */
+    virtual void send(const std::vector<char>& ){};
+    virtual std::vector<char> receive(){return std::vector<char>();};
+    virtual bool is_empty() const {return true;};
+};
+
+
+/*
+ * lp - local process ack retard
+ * lq - remote process ack retard
+ */
+template<int lp, int lq, typename T_IO>
+class SWP_FIFO{
+protected:
+    using p_data = std::shared_ptr<vector<char>>;
+    static constexpr int L = lp + lq;
+
+    static_assert(std::is_base_of<IOFuncs,T_IO>::value,"Unrecognized IO interface");
+    static_assert(L != 0,"Zero length window");
 
 //BASIC DATA STRUCTS
 protected:
@@ -67,8 +69,9 @@ protected:
         size_t sz_data;
     };
 
-    struct proc_state : public IOFuncs{
-        proc_state(const IOFuncs& f) : IOFuncs{f} {};
+    struct proc_state {
+        proc_state(const T_IO& f): f{f} {};
+
         /*
          * out_pool - is an ordered set of received data cells where zero
          * index coincide with plain Sp index in any accessible state. out_pool
@@ -95,6 +98,11 @@ protected:
          * DAp = Ap - Sp
          */
         int DAp = 0;
+
+        /*
+         * External interface
+         */
+        T_IO f;
     };
 
 //EVENTS
@@ -123,12 +131,12 @@ protected:
         e_rcv():i_event("e_rcv"){}
 
         bool is_valid(const proc_state& s){
-            return !s.is_empty();
+            return !s.f.is_empty();
         }
 
         void apply(proc_state& s){
             //take one packet from the communication channel
-            vector<char> pkt = s.receive();
+            vector<char> pkt = s.f.receive();
             //this can happen only if the external receive channel was modified after is_valid() call
             if(pkt.empty()){ cerr << "empty packet"; return; }
 
@@ -168,7 +176,7 @@ protected:
             if(D == 0){
                 int dSp = 0;
                 while(s.out_pool.at(0)){
-                    s.write(std::move(*s.out_pool.front()));
+                    s.f.write(std::move(*s.out_pool.front()));
                     s.out_pool.pop_front();
                     s.out_pool.push_back(nullptr);
                     dSp++;
@@ -183,7 +191,7 @@ protected:
 
     //SEND EVENT
     struct e_send : public i_event{
-        e_send(int idx): i_event("e_send"), idx{idx}{
+        e_send(int idx): i_event("e_send_" + to_string(idx)), idx{idx}{
             assert(idx >= 0 && idx < L);
         }
 
@@ -202,7 +210,7 @@ protected:
             vector<char> pkt(sizeof(msg)+sz_data);
             memcpy(pkt.data(),&msg,sizeof(msg));
             memcpy(pkt.data()+sizeof(msg),s.in_pool.at(idx)->data(),sz_data);
-            s.send(pkt);
+            s.f.send(pkt);
         }
     private:
         const int idx;
@@ -218,18 +226,19 @@ protected:
 
         void apply(proc_state& s){
             while(s.DAp + (int)s.in_pool.size() < lp)
-                s.in_pool.push_back(p_data(new vector<char>(s.read())));
+                s.in_pool.push_back(p_data(new vector<char>(s.f.read())));
         }
     };
 
 
 public:
-    SWP_FIFO(const IOFuncs& f, string uid): state(f), uid{uid} {
-        using p_e = unique_ptr<i_event>;
-        events.insert(unique_ptr<i_event>(new e_rcv));
-        events.insert(unique_ptr<i_event>(new e_read));
-        for(int idx = 0; idx < L; idx++)
-            events.insert(unique_ptr<i_event>(new e_send(idx)));
+    SWP_FIFO(const T_IO& f, string uid): state{f}, uid{uid} {}
+
+    friend std::ostream& operator<< (std::ostream& stream, const SWP_FIFO<lp,lq,T_IO>& node){
+        stream << node.uid << ":[.in_shortage=" << (lp - node.state.DAp - (int)node.state.in_pool.size()) << ",";
+        stream << ".DAp=" << node.state.DAp << ",";
+        stream << ".Sp_m=" << node.state.Sp_m << "]";
+        return stream;
     }
 
 protected:
@@ -238,15 +247,6 @@ protected:
      * interface functions to the out world.
      */
     proc_state state;
-
-    /*
-     * A set of all deterministic events. These are not atomic events
-     * in a sense of discrete event tuples {pid, s_in, m_r, m_s, s_out},
-     * each of these events can produce a concrete tuple if applied to a concrete
-     * internal state + process input queue. A set of all possible atomic events is
-     * much more rich than this set.
-     */
-    set<std::shared_ptr<i_event>> events;
 
     /*
      * unique process ID
