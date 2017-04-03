@@ -241,12 +241,15 @@ public:
         return stream;
     }
 
-protected:
     /*
      * Internal process state as defined in "proc_state" struct excluding
      * interface functions to the out world.
      */
-    proc_state state;
+    proc_state state; //todo: move to protected
+
+    string get_uid() const { return uid; }
+
+protected:
 
     /*
      * unique process ID

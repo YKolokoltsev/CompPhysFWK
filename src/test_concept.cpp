@@ -8,17 +8,32 @@
 #include <utility>                   // for std::pair
 #include <algorithm>                 // for std::for_each
 #include <fstream>
+
 #include <boost/graph/graph_traits.hpp>
 #include <boost/graph/adjacency_list.hpp>
 #include <boost/graph/graphml.hpp>
+#include <boost/filesystem.hpp>
 
 using namespace boost;
+struct node_props{
+    std::string name;
 
-/*
+    friend std::ostream& operator<< (std::ostream& stream, const node_props& node){
+        stream << node.name;
+        return stream;
+    }
+
+    friend std::istream& operator>> (std::istream& stream, node_props& node){
+        stream >> node.name;
+        return stream;
+    }
+};
+
 int main(int,char*[])
 {
     // create a typedef for the Graph type
-    typedef adjacency_list<vecS, vecS, bidirectionalS> Graph;
+    typedef adjacency_list<vecS, vecS, bidirectionalS,
+            property< vertex_name_t, node_props >> Graph;
 
     // Make convenient labels for the vertices
     enum { A, B, C, D, E, N };
@@ -39,72 +54,23 @@ int main(int,char*[])
     for (int i = 0; i < num_edges; ++i)
         add_edge(edge_array[i].first, edge_array[i].second, g);
 
-    //show graph with GraphViz
-    std::ofstream file("/home/data/tmp/out.gv");
-    //write_graphml(std::cout, g, make_label_writer(name));
-    write_graphviz(std::cout, g, make_label_writer(name));
-    write_graphviz(file, g, make_label_writer(name));
+    // fill vertex properties
+    graph_traits<Graph>::vertex_iterator v, v_end;
+    for (tie(v,v_end) = vertices(g); v != v_end; ++v)
+        put(vertex_name_t(), g, *v, node_props{std::string() + name[*v]});
+
+    // initialize dynamic_properties interface
+    dynamic_properties dp;
+    dp.property("name", get(vertex_name_t(), g));
+
+    //output graph
+    write_graphml(std::cout, g, dp, true);
+
+    auto abs_path = filesystem::complete("out.graphml");
+    std::ofstream file(abs_path.string());
+    write_graphml(file, g, dp, true);
+    std::cout << abs_path << std::endl;
     file.close();
 
     return 0;
-}*/
-
-enum files_e { dax_h, yow_h, boz_h, zow_h, foo_cpp,
-    foo_o, bar_cpp, bar_o, libfoobar_a,
-    zig_cpp, zig_o, zag_cpp, zag_o,
-    libzigzag_a, killerapp, N };
-const char* name[] = { "dax.h", "yow.h", "boz.h", "zow.h", "foo.cpp",
-                       "foo.o", "bar.cpp", "bar.o", "libfoobar.a",
-                       "zig.cpp", "zig.o", "zag.cpp", "zag.o",
-                       "libzigzag.a", "killerapp" };
-
-#include <utility>
-#include <string>
-
-int main(int,char*[])
-{
-    typedef std::pair<int,int> Edge;
-    Edge used_by[] = {
-            Edge(dax_h, foo_cpp), Edge(dax_h, bar_cpp), Edge(dax_h, yow_h),
-            Edge(yow_h, bar_cpp), Edge(yow_h, zag_cpp),
-            Edge(boz_h, bar_cpp), Edge(boz_h, zig_cpp), Edge(boz_h, zag_cpp),
-            Edge(zow_h, foo_cpp),
-            Edge(foo_cpp, foo_o),
-            Edge(foo_o, libfoobar_a),
-            Edge(bar_cpp, bar_o),
-            Edge(bar_o, libfoobar_a),
-            Edge(libfoobar_a, libzigzag_a),
-            Edge(zig_cpp, zig_o),
-            Edge(zig_o, libzigzag_a),
-            Edge(zag_cpp, zag_o),
-            Edge(zag_o, libzigzag_a),
-            Edge(libzigzag_a, killerapp)
-    };
-
-    const int nedges = sizeof(used_by)/sizeof(Edge);
-
-    typedef adjacency_list< vecS, vecS, directedS,
-            property< vertex_color_t, std::string >,
-            property< edge_weight_t, int >
-    > Graph;
-    Graph g(used_by, used_by + nedges, N);
-
-    graph_traits<Graph>::vertex_iterator v, v_end;
-    for (tie(v,v_end) = vertices(g); v != v_end; ++v)
-        put(vertex_color_t(), g, *v, name[*v]);
-
-    graph_traits<Graph>::edge_iterator e, e_end;
-    for (tie(e,e_end) = edges(g); e != e_end; ++e)
-        put(edge_weight_t(), g, *e, 3);
-
-    dynamic_properties dp;
-    dp.property("name", get(vertex_color_t(), g));
-    dp.property("weight", get(edge_weight_t(), g));
-
-
-    //write to file
-    std::ofstream file("/home/data/tmp/out.graphml");
-    write_graphml(file, g, dp, true);
-    write_graphml(std::cout, g, dp, true);
-    file.close();
 }
