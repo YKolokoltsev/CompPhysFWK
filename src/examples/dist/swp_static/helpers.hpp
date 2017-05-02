@@ -23,7 +23,7 @@
 
 using namespace std;
 
-const int lp = 5;
+const int lp = 2;
 const int lq = 3;
 
 typedef SWP_FIFO_Ghost<lp,lq> t_p;
